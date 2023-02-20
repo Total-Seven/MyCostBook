@@ -4,7 +4,7 @@ const service = require('egg').Service
 
 class HomeService extends service {
   async user() {
-    const { app } = this;   // ctx, app
+    const { app, ctx } = this;   // ctx, app
     const QUERY_STR = '*';  // 'id, name'
     let sql = `select ${QUERY_STR} from list`;
     try {

@@ -12,11 +12,11 @@ class HomeController extends Controller {
     // ctx.body = id;
   }
   // 基础 GET请求接口， 地址：/user/id  通过id获取的用户信息
-  // async user() {
-  //   const { ctx } = this;
-  //   const { id } = ctx.params;
-  //   ctx.body = id;
-  // }
+  async user() {
+    const { ctx } = this;
+    const { id } = ctx.params;
+    ctx.body = id;
+  }
 
   // async user() {
   //   const { ctx } = this;
@@ -27,11 +27,11 @@ class HomeController extends Controller {
   //   }
   // }
 
-  async user() {
-    const { ctx } = this
-    const result = await ctx.service.home.user()
-    ctx.body = result
-  }
+  // async user() {
+  //   const { ctx } = this
+  //   const result = await ctx.service.home.user()
+  //   ctx.body = result
+  // }
 
   async adduser() {
     const { ctx } = this

@@ -39,21 +39,21 @@ const Controller = require('egg').Controller
 
 class UserController extends Controller {
     async register() {
-        const { ctx } = this
-        // 获取用户输入的 用户名 和 密码
-        const { username, password } = ctx.request.body;
+        const { ctx, app } = this
+        // 获取用户输入的 用户名 和 密码 以及 默认账本名
+        const { username, password, bookname = '默认账本' } = ctx.request.body;
         // 判断 输入是否为空
-        if (!username || !password) {
+        if (!username || !password || !bookname) {
             ctx.body = {
                 code: 500,
-                msg: '用户名和密码不能为空哦',
+                msg: '参数不能为空哦',
                 data: null
             }
             return
         }
         // 验证用户名是否已存在
         const userInfo = await ctx.service.user.getUserByName(username)
-        // 判断
+        // 判断 
         if (userInfo && userInfo.id) {
             ctx.body = {
                 code: 500,
@@ -63,25 +63,75 @@ class UserController extends Controller {
             return
         }
         // 将数据存入数据库 成功返回200 失败返回500
-        const result = await ctx.service.user.register({
-            username,
-            password,
-            signature: '$$$$',
-            avatar: defaultAvatar,
-            ctime: getNowTime()
-        })
-        if (result) {
-            ctx.body = {
-                code: 200,
-                msg: '注册成功',
-                data: null
+        try {
+            const result = await ctx.service.user.register({
+                username,
+                password,
+                signature: '$$$$',
+                avatar: defaultAvatar,
+                ctime: getNowTime(),
+                default_book_id: 0,
+                budget: 1,
+                // 创建默认账本，
+                // 跟着一起注册
+                // 再返回给前端
+            })
+            const book = await ctx.service.book.add({
+                name: bookname || '默认账本',
+                book_type: 0,
+                user_id: result.insertId,
+                date: this.app.mysql.literals.now,
+            })
+            // 如果注册成功，自动登入并修改用户的默认账本ID
+            if (result) {
+                // 修改默认账本ID
+                const newUser = await ctx.service.user.editUserInfo({
+                    id: result.insertId,
+                    default_book_id: book.insertId
+                })
+                // 自动登入
+                // 生成token
+                //  app.jwt.sign 两个参数: 第一个是对象，第二个是加密字符
+                const userInfo2 = await ctx.service.user.getUserByName(username)
+                const token2 = app.jwt.sign({
+                    id: userInfo2.id,
+                    username: userInfo2.username,
+                    exp: Math.floor(Date.now() / 1000) + (24 * 60 * 60)
+                }, app.config.jwt.secret)
+                if (token2) {
+                    ctx.body = {
+                        code: 200,
+                        msg: '注册成功',
+                        data: {
+                            user_id: result.insertId,
+                            user_name: username,
+                            default_book_id: book.insertId,
+                            userInfo2,
+                            token: token2,
+                        }
+                    }
+                }
+                else {
+                    ctx.body = {
+                        code: 500,
+                        msg: '自动登入失败',
+                        data: null
+                    }
+                }
+
             }
-        }
-        else {
+            else {
+                ctx.body = {
+                    code: 500,
+                    msg: '注册失败',
+                    data: null
+                }
+            }
+        } catch (error) {
             ctx.body = {
                 code: 500,
-                msg: '注册失败',
-                data: null
+                msg: '系错',
+                data: '系统错误'
             }
         }
     }
@@ -93,7 +143,7 @@ class UserController extends Controller {
         if (!userInfo || !userInfo.id) {
             ctx.body = {
                 code: 500,
-                msg: '登录失败',
+                msg: '登录失败,账号不存在',
                 data: null
             }
             return
@@ -102,7 +152,7 @@ class UserController extends Controller {
         if (userInfo && password != userInfo.password) {
             ctx.body = {
                 code: 500,
-                msg: '账号密码错误',
+                msg: '登录失败，密码有误',
                 data: null
             }
             return
@@ -124,17 +174,9 @@ class UserController extends Controller {
         }
     }
     async test() {
-        console.log('*********************************');
-        console.log('*********************************');
-        console.log('*********************************');
-
         const { ctx, app } = this
         const token = ctx.request.header.authorization
         const decode = await app.jwt.verify(token, app.config.jwt.secret)
-        // if (decode) {
-        console.log(decode);
-        console.log('*********************************');
-        console.log('*********************************');
         if (decode) {
             ctx.body = {
                 code: 200,
@@ -155,6 +197,109 @@ class UserController extends Controller {
 
 
     }
+    async getUserInfo() {
+        const { ctx, app } = this
+        const token = ctx.request.header.authorization
+        const decode = app.jwt.verify(token, app.config.jwt.secret)
+        if (!decode) {
+            return
+        }
+        try { // 查找数据库
+            const userInfo = await ctx.service.user.getUserByName(decode.username)
+            const books = await ctx.service.book.getAllbook(userInfo.id)
+            const categories = await ctx.service.category.getAllCategory(userInfo.id)
+            const types = await ctx.service.category.getAlltype()
+            // 转化数据 => types 
+            let obj = {}
+            types.forEach(type => {
+                categories.forEach(category => {
+                    if (category.type_id == type.id) {
+                        if (!obj[type.name]) {
+                            obj[type.name] = []
+                            obj[type.name].push(category)
+
+                        }
+                        else {
+                            obj[type.name].push(category)
+                        }
+                    }
+                })
+            })
+            // 返回数据库中的信息
+            ctx.body = {
+                code: 200,
+                msg: 'getUserInfo成功',
+                data: {
+                    id: userInfo.id,
+                    username: userInfo.username,
+                    signature: userInfo.signature || '',
+                    // 👇 初始化写法
+                    avatar: userInfo.avatar || defaultAvatar,
+                    default_book_id: userInfo.default_book_id,
+                    books,
+                    typess: obj,
+                    categories,
+                    types,
+                }
+            }
+        } catch (error) {
+            console.log(error);
+            ctx.body = {
+                code: 500,
+                msg: '系统错误',
+                data: null
+            }
+        }
+
+    }
+    async editUserInfo() {
+        const { ctx, app } = this
+        const { default_book_id, signature = ' ', avatar = defaultAvatar } = ctx.request.body
+        try {
+            let user_id
+            const token = ctx.request.header.authorization
+            const decode = await app.jwt.verify(token, app.config.jwt.secret)
+            if (!decode) return
+
+            user_id = decode.id
+            // 通过username 查找数据库
+            const userInfo = await ctx.service.user.getUserByName(decode.username)
+            // 修改signature
+            const result = await ctx.service.user.editUserInfo({
+                ...userInfo,
+                default_book_id,
+                signature,
+                avatar
+            })
+            if (result) {
+                ctx.body = {
+                    code: 200,
+                    msg: '请求修改签名成功',
+                    data: {
+                        id: user_id,
+                        defaultBookID: default_book_id,
+                        signature,
+                        oldSignature: userInfo.signature,
+                        username: userInfo.username,
+                        avatar,
+                        ctime: userInfo.ctime,
+                        result: result
+                    }
+                }
+            }
+
+        } catch (error) {
+            console.error(error)
+        }
+    }
+    /** 
+     * 账单接口 （CRUD、复杂数据的处理、egg-mysql）
+    */
+    // 1.帐单列表
+    // 2.添加账单
+    // 3.修改账单
+    // 4.删除账单
+    // 5.账单详情
 }
 
 module.exports = UserController

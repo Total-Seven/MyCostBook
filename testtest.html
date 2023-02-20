@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+
+<body>
+    <script>
+        var a = 10;
+        (function () {
+            console.log(a);  //undfined
+            a = 5
+            console.log(window.a) //10 , 全局变量5不会挂到window上吗
+            // log(a)  就是5了
+            var a = 20
+            console.log(a); //20
+        }())
+
+        console.group('Var和全局变量和Window↓')
+        var num1 = 1
+        // delete num1
+        // console.log(num1);  // 1
+        num2 = 2
+        // delete num2
+        // console.log(num2);  // ReferenceError: num2 is not defined
+        function modelVar() {
+            console.group('上')
+            console.info('num1:  ' + num1)     // undefined
+            console.info('num2:  ' + num2)     // 2
+            console.info('window.num1:  ' + window.num1)     // 1
+            console.info('window.num2:  ' + window.num2);    // 2
+            console.groupEnd('上')
+            var num1 = 3
+            num2 = 4;
+            console.group('下')
+            console.info('num1:  ' + num1)     // 3
+            console.info('num2:  ' + num2)     // 4
+            console.info('window.num1:  ' + window.num1)     // 1
+            console.info('window.num2:  ' + window.num2);    // 4
+            console.groupEnd('下')
+            console.group('function');
+            (function () {
+                var num = 5
+                console.info('num:  ' + num)
+                num1 = 6
+                console.info('num1:  ' + num1)
+                num2 = 7
+                console.info('num2:  ' + num2)
+                console.info('window.num2:  ' + window.num2)
+                num3 = 8
+                console.info('num3:  ' + num3)
+            }())
+            console.groupEnd('function');
+        }
+        modelVar()
+        console.groupEnd('Var和全局变量和Window')
+    </script>
+</body>
+
+</html>
