@@ -16,11 +16,8 @@ class BillController extends Controller {
     async add() {
         const { ctx, app } = this
         // 获取请求头中携带的参数
-        const { pay_type, account_id, book_id, book_name, book_type, category_id, category_name, amount, date, remark = '' } = ctx.request.body
+        const { pay_type, account_id, book_id, book_name, book_type, type_id, type_name, category_id, category_name, amount, date, remark = '' } = ctx.request.body
         // ❌处理参数中“key”写错的情况
-
-
-
         if (!amount || !category_id || !category_name || !date || !pay_type || !account_id) {
             ctx.body = {
                 code: 200,
@@ -47,16 +44,28 @@ class BillController extends Controller {
                     book_id,
                     book_name,
                     book_type,
+                    type_id,
+                    type_name,
                     category_id,
                     category_name,
                     amount,
                     date: date ? date : this.app.mysql.literals.now,
                     remark,
                 })
-                ctx.body = {
-                    code: 200,
-                    msg: '添加Bill成功',
-                    data: result
+                if (result) {
+                    // ① 进行对账户的扣款
+                    const ql = `update account set amount=amount-${amount} where id = ${account_id}`
+                    const account = await app.mysql.query(ql)
+                    // ② 对预算的扣款
+
+                    ctx.body = {
+                        code: 200,
+                        msg: '添加Bill成功',
+                        data: {
+                            result,
+                            account,
+                        }
+                    }
                 }
             }
         } catch (error) {

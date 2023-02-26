@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Event Delegation</title>
+</head>
+
+<body>
+    <ul>
+        <li>我是li1</li>
+        <li>我是li2</li>
+        <li>我是li3</li>
+        <li>我是li4</li>
+        <li>我是li5</li>
+        <li>我是li6</li>
+    </ul>
+
+    <script>
+        /**
+         *  “事件代理”
+         * 即是把原本需要绑定在子元素的响应事件委托给父元素，让父元素担当事件监听的职务。
+         */
+    </script>
+    <script>
+        /* 
+         1.事件冒泡： 当触发子元素的事件时，该子元素的所有“父级元素” 的“同名事件”会依次触发 
+             * 事件冒泡现象一直都存在，只是以前没有给父元素注册同名事件
+             * 子元素 -> 父元素 -> body -> html -> document -> window
+ 
+         2.事件委托： 给父元素注册事件,委托子元素来处理
+             2.1 事件委托原理：事件冒泡
+             2.2 事件委托注意点 ： 不能使用this
+                 this: 事件源，指向父元素
+                 e.target: 事件触发源，指向具体触发这个事件委托的子元素
+             2.3 事件委托优点 ： 
+                    减少了访问 DOM 的次数，加快了页面加载的时间；
+                    可以大量节省内存占用 , 减少与 dom 的交互次数，提高性能
+                    对于动态内容部分尤为适合：可以实现当新增子对象时，无需再对其进行事件绑定
+             
+         */
+
+        //需求：给每一个li元素注册点击事件，点击之后显示自己的文本
+
+        /* 方式一：以前的写法，遍历数组逐一注册 */
+        let liList = document.querySelectorAll('ul>li');
+        //遍历数组
+        // for (let i = 0; i < liList.length; i++) {
+        //     //逐一注册
+        //     liList[i].onclick = function () {
+        //         //this: 当前点击的li元素
+        //         alert(this.innerText);
+        //     };
+        // };
+
+        /* 方式二：使用事件冒泡，给父元素注册 */
+        const handler = function (e) {
+            /*
+            this : 事件源。 这个事件给谁注册的。
+            e.target : 事件触发源。 这个事件触发的源头，到底点击的哪一个子元素触发的这个点击事件。
+            */
+            alert(e.target.innerText)
+            const { log } = console
+            log(this)
+        }
+        let ul = document.querySelector('ul')
+        ul.onclick = handler
+        //body
+        document.body.onclick = function () {
+            alert('我是body')
+        }
+        //html
+        document.documentElement.onclick = function () {
+            alert('我是html')
+        }
+        //document
+        document.onclick = function () {
+            alert('我是document')
+        }
+        //window
+        window.onclick = function () {
+            alert('我是window')
+        }
+    </script>
+</body>
+
+</html>

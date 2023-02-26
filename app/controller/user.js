@@ -2,6 +2,8 @@
 
 // 默认头像 
 const defaultAvatar = 'https://tse4-mm.cn.bing.net/th/id/OIP-C.MC8Z714Z8RHfT8Qadpps3gHaHa'
+const inconFaultAvatar = 'https://s2.loli.net/2023/02/10/cZkBewG65J3SjHr.png'
+
 var myDate = new Date();	//创建Date对象
 function getNowTime() {
     let nowDate = ''
@@ -37,6 +39,7 @@ function getNowTime() {
 
 const Controller = require('egg').Controller
 
+
 class UserController extends Controller {
     async register() {
         const { ctx, app } = this
@@ -71,43 +74,77 @@ class UserController extends Controller {
                 avatar: defaultAvatar,
                 ctime: getNowTime(),
                 default_book_id: 0,
-                budget: 1,
+                budget: 0,
+                current_budget: 0,
                 // 创建默认账本，
                 // 跟着一起注册
                 // 再返回给前端
             })
-            const book = await ctx.service.book.add({
-                name: bookname || '默认账本',
-                book_type: 0,
-                user_id: result.insertId,
-                date: this.app.mysql.literals.now,
-            })
             // 如果注册成功，自动登入并修改用户的默认账本ID
             if (result) {
-                // 修改默认账本ID
+                // ① 创建默认账本，购物清单账本
+                // 
+                const default_book = {
+                    name: bookname || '默认账本',
+                    book_type: 0,
+                    user_id: result.insertId,
+                    date: this.app.mysql.literals.now,
+                }
+                const inventory_book = {
+                    name: '购物清单',
+                    book_type: 10,
+                    user_id: result.insertId,
+                    date: this.app.mysql.literals.now,
+                }
+                const rows = [default_book, inventory_book]
+                // 自动添加账本
+                const book = await ctx.service.book.add(rows)
+                // ② 修改默认账本ID
                 const newUser = await ctx.service.user.editUserInfo({
                     id: result.insertId,
                     default_book_id: book.insertId
                 })
+                /**
+                 * 创建：购物清单类别，
+                 */
+                const category = await ctx.service.category.add({
+                    name: '购物清单',
+                    type_id: 5,
+                    user_id: result.insertId,
+                    avatar: inconFaultAvatar,
+                    caution: 0,
+                })
+                /**
+                * 创建：Not Accounted For，
+                */
+                const account = await ctx.service.account.add({
+                    name: 'Not Accounted For',
+                    pay_type: 2,
+                    user_id: result.insertId,
+                    amount: 0,
+                })
                 // 自动登入
                 // 生成token
                 //  app.jwt.sign 两个参数: 第一个是对象，第二个是加密字符
-                const userInfo2 = await ctx.service.user.getUserByName(username)
-                const token2 = app.jwt.sign({
-                    id: userInfo2.id,
-                    username: userInfo2.username,
+                const token = app.jwt.sign({
+                    id: result.insertId,
+                    username: username,
                     exp: Math.floor(Date.now() / 1000) + (24 * 60 * 60)
                 }, app.config.jwt.secret)
-                if (token2) {
+                if (token) {
+                    const userInfo = await ctx.service.user.getUserByName(username)
                     ctx.body = {
                         code: 200,
                         msg: '注册成功',
                         data: {
-                            user_id: result.insertId,
-                            user_name: username,
-                            default_book_id: book.insertId,
-                            userInfo2,
-                            token: token2,
+                            token,
+                            userInfo: {
+                                ...userInfo,
+                                default_book_name: bookname,
+                                inventory_book_id: book.insertId + 1,
+                                inventory_category_id: category.insertId,
+                                account_id: account.insertId,
+                            },
                         }
                     }
                 }
@@ -133,6 +170,7 @@ class UserController extends Controller {
                 msg: '系错',
                 data: '系统错误'
             }
+            throw new Error('系统错误')
         }
     }
     async login() {
@@ -169,7 +207,8 @@ class UserController extends Controller {
             code: 200,
             msg: '登录成功',
             data: {
-                token
+                token,
+                userInfo,
             }
         }
     }
@@ -201,45 +240,53 @@ class UserController extends Controller {
         const { ctx, app } = this
         const token = ctx.request.header.authorization
         const decode = app.jwt.verify(token, app.config.jwt.secret)
-        if (!decode) {
-            return
-        }
+        if (!decode) return
         try { // 查找数据库
             const userInfo = await ctx.service.user.getUserByName(decode.username)
             const books = await ctx.service.book.getAllbook(userInfo.id)
             const categories = await ctx.service.category.getAllCategory(userInfo.id)
-            const types = await ctx.service.category.getAlltype()
+            const Expend = await ctx.service.category.getAlltype(1)
+            const Income = await ctx.service.category.getAlltype(2)
+            const inventory = await ctx.service.inventory.getAllInventory(userInfo.id)
+            const account = await ctx.service.account.getAllAccount(userInfo.id)
+            const typess = { Expend, Income }
+
             // 转化数据 => types 
             let obj = {}
-            types.forEach(type => {
-                categories.forEach(category => {
-                    if (category.type_id == type.id) {
-                        if (!obj[type.name]) {
-                            obj[type.name] = []
-                            obj[type.name].push(category)
-
+            for (const key in typess) {
+                typess[key].forEach(item => {
+                    categories.forEach(category => {
+                        if (category.type_id == item.id) {
+                            if (item.list == undefined) {
+                                item.list = []
+                                item.list.push(category)
+                            }
+                            else {
+                                item.list.push(category)
+                            }
                         }
-                        else {
-                            obj[type.name].push(category)
-                        }
-                    }
+                    })
                 })
-            })
+            }
             // 返回数据库中的信息
             ctx.body = {
                 code: 200,
                 msg: 'getUserInfo成功',
                 data: {
-                    id: userInfo.id,
-                    username: userInfo.username,
-                    signature: userInfo.signature || '',
-                    // 👇 初始化写法
-                    avatar: userInfo.avatar || defaultAvatar,
-                    default_book_id: userInfo.default_book_id,
+                    userInfo,
+                    typess,
+                    // id: userInfo.id,
+                    // username: userInfo.username,
+                    // signature: userInfo.signature || '',
+                    // // 👇 初始化写法
+                    // avatar: userInfo.avatar || defaultAvatar,
+                    // default_book_id: userInfo.default_book_id,
                     books,
-                    typess: obj,
+                    // typess: obj,
                     categories,
-                    types,
+                    inventory,
+                    account,
+                    inconFaultAvatar,
                 }
             }
         } catch (error) {

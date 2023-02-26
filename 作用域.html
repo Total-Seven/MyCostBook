@@ -12,14 +12,14 @@
     <script>
         var a = 10;
         (function () {
-            console.log(a);  //undfined
-            a = 5
-            console.log(window.a) //10 , 全局变量5不会挂到window上吗
-            // log(a)  就是5了
-            var a = 20
-            console.log(a); //20
+            // var a 
+            console.log(a);   // 10 "RHS"引用，这里找到当前作用域的声明变量 “a”，未赋值=undefined
+            a = 5             // "LHS"引用，找不到就创建，这里找到当前作用域的变量 “a” 修改了它
+            console.log(this.a)  // 10 "RHS"引用 从window作用域开始找a
+            console.log(a)       // 5
+            var a = 20           // a = 20
+            console.log(a);      // 20
         }())
-
         console.group('Var和全局变量和Window↓')
         var num1 = 1
         // delete num1
@@ -35,6 +35,9 @@
             console.info('window.num2:  ' + window.num2);    // 2
             console.groupEnd('上')
             var num1 = 3
+            /**
+             * 一旦用var声明变量，那么该变量就会在代码执行前就被创建
+             */
             num2 = 4;
             console.group('下')
             console.info('num1:  ' + num1)     // 3
@@ -57,6 +60,9 @@
             console.groupEnd('function');
         }
         modelVar()
+        console.log(num1);
+        console.log(num2);
+        console.log(num3);
         console.groupEnd('Var和全局变量和Window')
     </script>
 </body>

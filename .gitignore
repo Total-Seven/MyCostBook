@@ -13,3 +13,6 @@ run/
 *.un~
 typings/
 .nyc_output/
+testtest.html
+testtest.js
+服务端开发总结.md

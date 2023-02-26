@@ -11,23 +11,22 @@ const moment = require('moment')
 const jwtErr = require('../middleware/jwtErr')
 
 const Controller = require('egg').Controller
-const inconFaultAvatar = 'https://s2.loli.net/2023/02/10/cZkBewG65J3SjHr.png'
 
 class BookController extends Controller {
-    async AddCategory() {
+    async add() {
         const { ctx, app } = this
         // 获取请求头中携带的参数
-        const { name, type_id, avatar = inconFaultAvatar } = ctx.request.body
-        if (!name || !type_id || name == undefined) {
+        const { name, pay_type, amount = 0 } = ctx.request.body
+        if (!name || !pay_type) {
             ctx.body = {
                 code: 200,
-                msg: '账本参数错误',
+                msg: '参数不能为空',
                 data: null,
             }
         }
         try {
             // 鉴权
-            let id
+            let user_id
             const token = ctx.request.header.authorization
             const decode = await app.jwt.verify(token, app.config.jwt.secret)
             if (!decode) {
@@ -35,34 +34,25 @@ class BookController extends Controller {
             }
             // 
             else {
-                id = decode.id
-                // id默认添加到每个账单项，作为后续获取指定用户账单的标识,
-                // 也就是, 登录A账户，那么所作的操作都得加上A的ID，
-                // 后续对数据库操作的时候，就可以指定ID操作
-                const result = await ctx.service.category.add({
+                user_id = decode.id
+                // 添加账户
+                const result = await ctx.service.account.add({
                     name,
-                    type_id,
-                    user_id: id,
-                    avatar,
-                    caution: 0,
+                    pay_type,
+                    user_id,
+                    amount,
                 })
-                const target = await app.mysql.query(`select * from category where id = ${result.insertId}`)
                 if (result) {
                     ctx.body = {
                         code: 200,
-                        msg: '添加二级分类成功',
-                        data: { target, id, }
+                        msg: '添加Account成功',
+                        data: result
                     }
                 } else {
                     ctx.body = {
                         code: 500,
-                        msg: '失败--添加二级分类',
-                        data: {
-                            result,
-                            name,
-                            type_id,
-                            user_id: id,
-                        }
+                        msg: '失败--添加Account',
+                        data: null
                     }
                 }
             }
@@ -70,7 +60,7 @@ class BookController extends Controller {
             console.error(error)
             ctx.body = {
                 code: 500,
-                msg: '添加二级分类-蛋疼',
+                msg: '添加账本-蛋疼',
                 data: null
             }
         }
@@ -88,41 +78,24 @@ class BookController extends Controller {
         }
 
         try {
-            const QUERY_STR = 'type_id'
-            let sql = `select ${QUERY_STR} from category where id=${id}`
-            const type_id = await app.mysql.query(sql);
-            if (!type_id) {
-                ctx.body = {
-                    code: 400,
-                    msg: '二级分类无效',
-                    data: null
-                }
-                return
-            }
+            const QUERY_STR = 'date'
+            let sql = `select ${QUERY_STR} from book where id=${id}`
+            const date = await app.mysql.query(sql);
             let user_id
             const token = ctx.request.header.authorization;
             const decode = await app.jwt.verify(token, app.config.jwt.secret);
             if (!decode) return
             user_id = decode.id
-            const result = await ctx.service.category.delete(id, user_id);
-            if (result) {
-                ctx.body = {
-                    code: 200,
-                    msg: '删除category成功',
-                    data: { result, type_id }
-                }
-            }
-            else {
-                ctx.body = {
-                    code: 500,
-                    msg: '失败--删除category',
-                    data: null,
-                }
+            const result = await ctx.service.book.delete(id, user_id);
+            ctx.body = {
+                code: 200,
+                msg: '删除Book成功',
+                data: date,
             }
         } catch (error) {
             ctx.body = {
                 code: 500,
-                msg: '删除category系统错误',
+                msg: '删除Book系统错误',
                 data: null
             }
         }
@@ -160,6 +133,36 @@ class BookController extends Controller {
                 code: 500,
                 msg: '系统错误',
                 data: null
+            }
+        }
+    }
+    async getAllAccount() {
+        const { ctx, app } = this
+        let user_id
+        const token = ctx.request.header.authorization
+        const decode = await app.jwt.verify(token, app.config.jwt.secret)
+        if (!decode) return
+        else {
+            user_id = decode.id
+            const ql = `select * from account where user_id=${user_id}`
+            const result = await app.mysql.query(ql)
+            if (result) {
+                let assets = 0
+                let debt = 0
+                const net = result.reduce((pre, cur) => {
+                    cur.amount > 0 ? assets += cur.amount : debt -= cur.amount
+                    return pre += cur.amount
+                }, 0)
+                ctx.body = {
+                    code: 200,
+                    msg: '成功',
+                    data: {
+                        accounts: result,
+                        net,
+                        assets,
+                        debt,
+                    }
+                }
             }
         }
     }
