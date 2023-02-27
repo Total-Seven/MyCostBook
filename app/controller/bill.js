@@ -9,14 +9,15 @@
 'use strict'
 const moment = require('moment')
 const jwtErr = require('../middleware/jwtErr')
-
+const dayjs = require('dayjs')
 const Controller = require('egg').Controller
 
 class BillController extends Controller {
     async add() {
+        // 
         const { ctx, app } = this
         // 获取请求头中携带的参数
-        const { pay_type, account_id, book_id, book_name, book_type, type_id, type_name, category_id, category_name, amount, date, remark = '' } = ctx.request.body
+        const { pay_type, account_id, book_id, book_name, book_type, type_id, type_name, category_id, category_name, amount, date = dayjs().format('YYYY-MM-DD HH:mm:ss'), remark = '' } = ctx.request.body
         // ❌处理参数中“key”写错的情况
         if (!amount || !category_id || !category_name || !date || !pay_type || !account_id) {
             ctx.body = {
@@ -49,7 +50,7 @@ class BillController extends Controller {
                     category_id,
                     category_name,
                     amount,
-                    date: date ? date : this.app.mysql.literals.now,
+                    date,  //存储的时候不用加八个小时
                     remark,
                 })
                 if (result) {
@@ -62,8 +63,20 @@ class BillController extends Controller {
                         code: 200,
                         msg: '添加Bill成功',
                         data: {
-                            result,
-                            account,
+                            id: result.insertId,
+                            user_id,
+                            pay_type,
+                            account_id,
+                            book_id,
+                            book_name,
+                            book_type,
+                            type_id,
+                            type_name,
+                            category_id,
+                            category_name,
+                            amount,
+                            date,  //存储的时候不用加八个小时
+                            remark,
                         }
                     }
                 }

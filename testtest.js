@@ -193,11 +193,13 @@ strTest = "notT1";
 map.get("t1"); // undefined;
 map.get("notT1"); // 10
 
-
 // 2.为了共享
 // 实际上， 基础类型中， 值一样的变量是共享一个内存区域的。
-
 
 var number1 = 1
 var number2 = 1     //  1这个数据在内存中只保存了一份，而可以有多个标识符使用它。
 console.groupEnd('数据类型')
+
+const a = '123'
+const b = 123
+console.log('a==b', a == b);

@@ -54,8 +54,11 @@ module.exports = app => {
   router.post('/api/account/add', _jwt, controller.account.add); // 添加账户
   router.get('/api/account/getAllAccount', _jwt, controller.account.getAllAccount); // 获取所有账户信息
   // Chart  getYear_LinePieTop
-  // get Expend Year、Month、Week、Day
+  // get Expend Year、Month、Week、Day   
   router.get('/api/chart/getYear_LinePieTop', _jwt, controller.chart.getYear_LinePieTop); // 获取所有账户信息
+  router.get('/api/chart/getDay_LinePieTop', _jwt, controller.chart.getDay_LinePieTop); // 获取所有账户信息
+  router.get('/api/chart/getMonth_LinePieTop', _jwt, controller.chart.getMonth_LinePieTop); // 获取所有账户信息
+  router.get('/api/chart/getWeek_LinePieTop', _jwt, controller.chart.getWeek_LinePieTop); // 获取所有账户信息
   // get Income Year、Month、Week、Day
   // get Transfer Year、Month、Week、Day
 };
