@@ -50,15 +50,19 @@ module.exports = app => {
   router.post('/api/inventory/delete', _jwt, controller.inventory.delete); // 删除Inventory 
   router.get('/api/inventory/getAllInventory', _jwt, controller.inventory.getAllInventory); // 编辑Inventory
   router.post('/api/inventory/charge', _jwt, controller.inventory.charge); // 一键记账
-  // Account
+  // Account  
   router.post('/api/account/add', _jwt, controller.account.add); // 添加账户
+  router.post('/api/account/delete', _jwt, controller.account.delete); // 添加账户
   router.get('/api/account/getAllAccount', _jwt, controller.account.getAllAccount); // 获取所有账户信息
   // Chart  getYear_LinePieTop
-  // get Expend Year、Month、Week、Day   
-  router.get('/api/chart/getYear_LinePieTop', _jwt, controller.chart.getYear_LinePieTop); // 获取所有账户信息
-  router.get('/api/chart/getDay_LinePieTop', _jwt, controller.chart.getDay_LinePieTop); // 获取所有账户信息
-  router.get('/api/chart/getMonth_LinePieTop', _jwt, controller.chart.getMonth_LinePieTop); // 获取所有账户信息
-  router.get('/api/chart/getWeek_LinePieTop', _jwt, controller.chart.getWeek_LinePieTop); // 获取所有账户信息
+  // get Expend Year、Month、Week、Day     get_Exp_Inc_Trf
+  // router.get('/api/chart/getYear_LinePieTop', _jwt, controller.chart.getYear_LinePieTop); // 获取所有账户信息
+  // router.get('/api/chart/getDay_LinePieTop', _jwt, controller.chart.getDay_LinePieTop); // 获取所有账户信息
+  // router.get('/api/chart/getMonth_LinePieTop', _jwt, controller.chart.getMonth_LinePieTop); // 获取所有账户信息
+  // router.get('/api/chart/getWeek_LinePieTop', _jwt, controller.chart.getWeek_LinePieTop); // 获取所有账户信息
+  router.get('/api/chart/get_Exp_data', _jwt, controller.chart.get_Exp_data); // 获取所有账户信息
+  router.get('/api/chart/get_Exp_Inc_Trf', _jwt, controller.chart.get_Exp_Inc_Trf); // 获取所有账户信息
+
   // get Income Year、Month、Week、Day
   // get Transfer Year、Month、Week、Day
 };

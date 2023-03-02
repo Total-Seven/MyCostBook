@@ -68,7 +68,6 @@ class BookController extends Controller {
     async delete() {
         const { ctx, app } = this;
         const { id } = ctx.request.body;
-
         if (!id) {
             ctx.body = {
                 code: 400,
@@ -76,21 +75,17 @@ class BookController extends Controller {
                 data: null
             }
         }
-
+        let user_id
+        const token = ctx.request.header.authorization;
+        const decode = await app.jwt.verify(token, app.config.jwt.secret);
+        if (!decode) return
+        user_id = decode.id
         try {
-            const QUERY_STR = 'date'
-            let sql = `select ${QUERY_STR} from book where id=${id}`
-            const date = await app.mysql.query(sql);
-            let user_id
-            const token = ctx.request.header.authorization;
-            const decode = await app.jwt.verify(token, app.config.jwt.secret);
-            if (!decode) return
-            user_id = decode.id
-            const result = await ctx.service.book.delete(id, user_id);
+            const result = await ctx.service.account.delete(id, user_id);
             ctx.body = {
                 code: 200,
                 msg: '删除Book成功',
-                data: date,
+                data: result,
             }
         } catch (error) {
             ctx.body = {

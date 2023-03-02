@@ -17,6 +17,19 @@ class AccountService extends Service {
             return null
         }
     }
+    async delete(id, user_id) {
+        const { ctx, app } = this;
+        try {
+            let result = await app.mysql.delete('account', {
+                id: id,
+                user_id: user_id
+            });
+            return result;
+        } catch (error) {
+            console.log(error);
+            return null;
+        }
+    }
     async getAllAccount(user_id) {
         const { ctx, app } = this
         try {

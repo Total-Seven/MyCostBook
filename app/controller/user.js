@@ -4,6 +4,7 @@
 const defaultAvatar = 'https://tse4-mm.cn.bing.net/th/id/OIP-C.MC8Z714Z8RHfT8Qadpps3gHaHa'
 const inconFaultAvatar = 'https://s2.loli.net/2023/02/10/cZkBewG65J3SjHr.png'
 
+const dayjs = require('dayjs')
 var myDate = new Date();	//创建Date对象
 function getNowTime() {
     let nowDate = ''
@@ -99,10 +100,21 @@ class UserController extends Controller {
                 const rows = [default_book, inventory_book]
                 // 自动添加账本
                 const book = await ctx.service.book.add(rows)
+                /**
+                * 创建：Not Accounted For，
+                */
+                const account = await ctx.service.account.add({
+                    name: 'Not Accounted For',
+                    pay_type: 2,
+                    user_id: result.insertId,
+                    amount: 0,
+                })
                 // ② 修改默认账本ID
                 const newUser = await ctx.service.user.editUserInfo({
                     id: result.insertId,
-                    default_book_id: book.insertId
+                    default_book_id: book.insertId,
+                    default_account_id: account.insertId,
+                    last_login: dayjs().format('YYYY-MM-DD HH:mm:ss')
                 })
                 /**
                  * 创建：购物清单类别，
@@ -114,15 +126,7 @@ class UserController extends Controller {
                     avatar: inconFaultAvatar,
                     caution: 0,
                 })
-                /**
-                * 创建：Not Accounted For，
-                */
-                const account = await ctx.service.account.add({
-                    name: 'Not Accounted For',
-                    pay_type: 2,
-                    user_id: result.insertId,
-                    amount: 0,
-                })
+
                 // 自动登入
                 // 生成token
                 //  app.jwt.sign 两个参数: 第一个是对象，第二个是加密字符
@@ -178,6 +182,11 @@ class UserController extends Controller {
         const { username, password } = ctx.request.body
         // 根据用户名，查找数据库
         const userInfo = await ctx.service.user.getUserByName(username)
+        // 修改last_login
+        await ctx.service.user.editUserInfo({
+            ...userInfo,
+            last_login: dayjs().format('YYYY-MM-DD HH:mm:ss')
+        })
         if (!userInfo || !userInfo.id) {
             ctx.body = {
                 code: 500,
@@ -203,14 +212,32 @@ class UserController extends Controller {
             username: userInfo.username,
             exp: Math.floor(Date.now() / 1000) + (24 * 60 * 60)
         }, app.config.jwt.secret)
-        ctx.body = {
-            code: 200,
-            msg: '登录成功',
-            data: {
-                token,
-                userInfo,
+        // 
+        const ql = `select * from account where user_id=${userInfo.id}`
+        const account = await app.mysql.query(ql)
+        const books = await ctx.service.book.getAllbook(userInfo.id)
+        if (books) {
+            let assets = 0
+            let debt = 0
+            const net = account.reduce((pre, cur) => {
+                cur.amount > 0 ? assets += cur.amount : debt -= cur.amount
+                return pre += cur.amount
+            }, 0)
+            ctx.body = {
+                code: 200,
+                msg: '登录成功',
+                data: {
+                    token,
+                    userInfo,
+                    books,
+                    accounts: account,
+                    net,
+                    assets,
+                    debt,
+                }
             }
         }
+
     }
     async test() {
         const { ctx, app } = this
@@ -301,22 +328,19 @@ class UserController extends Controller {
     }
     async editUserInfo() {
         const { ctx, app } = this
-        const { default_book_id, signature = ' ', avatar = defaultAvatar } = ctx.request.body
+        const { new_username } = ctx.request.body
         try {
             let user_id
             const token = ctx.request.header.authorization
             const decode = await app.jwt.verify(token, app.config.jwt.secret)
             if (!decode) return
-
             user_id = decode.id
             // 通过username 查找数据库
             const userInfo = await ctx.service.user.getUserByName(decode.username)
             // 修改signature
             const result = await ctx.service.user.editUserInfo({
                 ...userInfo,
-                default_book_id,
-                signature,
-                avatar
+                username: new_username,
             })
             if (result) {
                 ctx.body = {
@@ -324,13 +348,13 @@ class UserController extends Controller {
                     msg: '请求修改签名成功',
                     data: {
                         id: user_id,
-                        defaultBookID: default_book_id,
-                        signature,
-                        oldSignature: userInfo.signature,
-                        username: userInfo.username,
-                        avatar,
-                        ctime: userInfo.ctime,
-                        result: result
+                        // defaultBookID: default_book_id,
+                        // signature,
+                        // oldSignature: userInfo.signature,
+                        new_username,
+                        // avatar,
+                        // ctime: userInfo.ctime,
+                        // result: result
                     }
                 }
             }

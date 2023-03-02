@@ -11,7 +11,19 @@ const moment = require('moment')
 const jwtErr = require('../middleware/jwtErr')
 const dayjs = require('dayjs')
 const Controller = require('egg').Controller
-
+function keepTwoDecimalStr(num) {
+    const result = Number(num.toString().match(/^\d+(?:\.\d{0,2})?/));
+    let s = result.toString();
+    let rs = s.indexOf('.');
+    if (rs < 0) {
+        rs = s.length;
+        s += '.';
+    }
+    while (s.length <= rs + 2) {
+        s += '0';
+    }
+    return Number(s);
+};
 class BillController extends Controller {
     async add() {
         // 
@@ -35,6 +47,7 @@ class BillController extends Controller {
             }
             else {
                 user_id = decode.id
+                const user = await app.mysql.query(`select * from user where id=${user_id}`)
                 // user_id默认添加到每个账单项，作为后续获取指定用户账单的标识,
                 // 也就是, 登录A账户，那么所作的操作都得加上A的ID，
                 // 后续对数据库操作的时候，就可以指定ID操作
@@ -58,11 +71,19 @@ class BillController extends Controller {
                     const ql = `update account set amount=amount-${amount} where id = ${account_id}`
                     const account = await app.mysql.query(ql)
                     // ② 对预算的扣款
-
+                    const qql = `select budget_mode from user where id=${user_id}`
+                    const budget_mode = await app.mysql.query(qql)
+                    let setBudget = 0
+                    if (budget_mode[0].budget_mode == 1) {
+                        const ql = `update user set current_budget=current_budget-${amount} where id = ${user_id}`
+                        setBudget = await app.mysql.query(ql)
+                    }
                     ctx.body = {
                         code: 200,
                         msg: '添加Bill成功',
                         data: {
+                            budget_mode,
+                            setBudget,
                             id: result.insertId,
                             user_id,
                             pay_type,
@@ -207,7 +228,7 @@ class BillController extends Controller {
     async list() {
         const { ctx, app } = this;
         // 获取，日期 date，分页数据，类型 type_id，这些都是我们在前端传给后端的数据
-        const { book_id, date, page = 1, page_size = 5, category_id = 'all' } = ctx.query
+        const { book_id, date, page, page_size, category_id = 'all' } = ctx.query
         try {
             let user_id
             // 通过 token 解析，拿到 user_id
@@ -215,16 +236,38 @@ class BillController extends Controller {
             const decode = await app.jwt.verify(token, app.config.jwt.secret);
             if (!decode) return
             user_id = decode.id
-            // 拿到当前用户的账单列表   ❌：要加账本
-            const list = await ctx.service.bill.list(user_id, book_id)
 
-            // 筛选：条件（日期相等、type相等；例如：2023年2月 学习类的所有账单）
+            // 拿到当前用户的账单列表
+            const list = await ctx.service.bill.list(user_id, book_id)
+            /**
+              * 获取账本信息 ： net income expense 
+              */
+            const expense_list = list.filter(bill => {
+                return bill.pay_type == 2
+            })
+            const total_expense = keepTwoDecimalStr(expense_list.reduce((pre, cur) => {
+                return pre += cur.amount
+            }, 0))
+            const income_list = list.filter(bill => {
+                return bill.pay_type == 1
+            })
+            const total_income = keepTwoDecimalStr(income_list.reduce((pre, cur) => {
+                return pre += cur.amount
+            }, 0))
+            const total_net = total_income - total_expense
+            /**
+             *  筛选：条件
+             * （日期相等、type相等；例如：2023年2月 学习类的所有账单）
+             */
             const _list = list.filter(item => {
                 if (category_id != 'all') {
                     return moment(Number(item.date)).format('YYYY-MM') == date && category_id == item.category_id
                 }
                 return moment(Number(item.date)).format('YYYY-MM') == date
             })
+            // _list.forEach(item => {
+            //     item.date = dayjs(item.date).format('')
+            // })
 
             // 格式化数据，将数据库里的一条条数据包裹成对象、数组
             let listMap = _list.reduce((curr, item) => {
@@ -264,9 +307,9 @@ class BillController extends Controller {
             let totalExpense = __list.reduce((curr, item) => {
                 if (item.pay_type == 1) {
                     curr += Number(item.amount)
-                    return curr
+                    return keepTwoDecimalStr(curr)
                 }
-                return curr
+                return keepTwoDecimalStr(curr)
             }, 0)
             // 累加计算收入
             let totalIncome = __list.reduce((curr, item) => {
@@ -290,9 +333,13 @@ class BillController extends Controller {
                 code: 200,
                 msg: '请求成功',
                 data: {
-                    totalExpense, // 当月支出
-                    totalIncome, // 当月收入
-                    totalAsset,
+                    username: decode.username,
+                    // _list,
+                    // totalExpense, // 当月支出
+                    // totalIncome, // 当月收入
+                    // totalAsset,
+                    // expense_list, income_list,
+                    total_net, total_income, total_expense,  // 总收入支出，净余额
                     totalPage: Math.ceil(listMap.length / page_size), // 总分页
                     list: filterListMap || [] // 格式化后，并且经过分页处理的数据
                 }
