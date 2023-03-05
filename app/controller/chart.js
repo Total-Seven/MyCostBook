@@ -819,8 +819,8 @@ class ChartController extends Controller {
                  * 赋值
                  */
                 function assignment(obj) {
-                    if (index == 1) resData.Exp = obj
-                    else if (index == 2) resData.Inc = obj
+                    if (index == 1) resData.Inc = obj
+                    else if (index == 2) resData.Exp = obj
                     else if (index == 3) resData.Trf = obj
                 }
                 assignment({ Year, Month, Day, Week })

@@ -212,10 +212,28 @@ class UserController extends Controller {
             username: userInfo.username,
             exp: Math.floor(Date.now() / 1000) + (24 * 60 * 60)
         }, app.config.jwt.secret)
+        //
+        // account_list
+        // const ql_ac1 = `select * from account where pay_type=1 and user_id=${userInfo.id}`
+        // const ql_ac2 = `select * from account where pay_type=2 and user_id=${userInfo.id}`
+        // const ac1 = await app.mysql.query(ql_ac1)
+        // const ac2 = await app.mysql.query(ql_ac2)
+        // category_list     拿type  过虑id==type&&type_id==1 
+        const all_cg_ql = `select * from category where user_id=${userInfo.id}`
+        const all_cg = await app.mysql.query(all_cg_ql)
+        let expense_cg = []
+        let income_cg = []
+        all_cg.forEach(async (item) => {
+            const cg_type = await app.mysql.query(`select type from type where id=${item.type_id}`)
+            if (cg_type[0].type == 1) expense_cg.push(item)
+            else if (cg_type[0].type == 2) income_cg.push(item)
+        })
         // 
         const ql = `select * from account where user_id=${userInfo.id}`
         const account = await app.mysql.query(ql)
         const books = await ctx.service.book.getAllbook(userInfo.id)
+        // 
+        const plan = await app.mysql.query(`select * from plan where user_id=${userInfo.id}`)
         if (books) {
             let assets = 0
             let debt = 0
@@ -223,14 +241,23 @@ class UserController extends Controller {
                 cur.amount > 0 ? assets += cur.amount : debt -= cur.amount
                 return pre += cur.amount
             }, 0)
+            // 
+            const Saved_Money = plan.reduce((pre, cur) => {
+                return pre += cur.saved_money
+            }, 0)
             ctx.body = {
                 code: 200,
                 msg: '登录成功',
                 data: {
+                    plan,
+                    Saved_Money,
+                    all_cg,
+                    category_list: [expense_cg, income_cg],
                     token,
                     userInfo,
                     books,
                     accounts: account,
+                    // account_list: [ac1, ac2],
                     net,
                     assets,
                     debt,
@@ -276,8 +303,8 @@ class UserController extends Controller {
             const Income = await ctx.service.category.getAlltype(2)
             const inventory = await ctx.service.inventory.getAllInventory(userInfo.id)
             const account = await ctx.service.account.getAllAccount(userInfo.id)
+            const plan = await app.mysql.query(`select * from plan where user_id=${userInfo.id}`)
             const typess = { Expend, Income }
-
             // 转化数据 => types 
             let obj = {}
             for (const key in typess) {
@@ -295,11 +322,25 @@ class UserController extends Controller {
                     })
                 })
             }
+            // 计算SavedMoney
+            const Saved_Money = plan.reduce((pre, cur) => {
+                return pre += cur.saved_money
+            }, 0)
+            // 
+            let assets = 0
+            let debt = 0
+            const net = account.reduce((pre, cur) => {
+                cur.amount > 0 ? assets += cur.amount : debt -= cur.amount
+                return pre += cur.amount
+            }, 0)
             // 返回数据库中的信息
             ctx.body = {
                 code: 200,
                 msg: 'getUserInfo成功',
                 data: {
+                    plan,
+                    net,
+                    Saved_Money,
                     userInfo,
                     typess,
                     // id: userInfo.id,

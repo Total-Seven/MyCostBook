@@ -20,7 +20,7 @@ class PlanService extends Service {
     async delete(id, user_id) {
         const { ctx, app } = this;
         try {
-            let result = await app.mysql.delete('book', {
+            let result = await app.mysql.delete('plan', {
                 id: id,
                 user_id: user_id
             });

@@ -139,20 +139,23 @@ class BookController extends Controller {
         if (!decode) return
         else {
             user_id = decode.id
-            const ql = `select * from account where user_id=${user_id}`
-            const result = await app.mysql.query(ql)
-            if (result) {
+            // const ql = `select * from account where user_id=${user_id}`
+            const ql = `select * from bill where user_id=${user_id}`
+            const bill = await app.mysql.query(ql)
+            if (bill) {
                 let assets = 0
                 let debt = 0
-                const net = result.reduce((pre, cur) => {
-                    cur.amount > 0 ? assets += cur.amount : debt -= cur.amount
-                    return pre += cur.amount
+                bill.reduce((pre, cur) => {
+                    cur.pay_type == 1 ? assets += cur.amount : debt += cur.amount
                 }, 0)
+                const net = assets - debt
+                const qll = `select * from account where user_id=${user_id}`
+                const accounts = await app.mysql.query(qll)
                 ctx.body = {
                     code: 200,
                     msg: '成功',
                     data: {
-                        accounts: result,
+                        accounts,
                         net,
                         assets,
                         debt,

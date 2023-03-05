@@ -203,3 +203,15 @@ console.groupEnd('数据类型')
 const a = '123'
 const b = 123
 console.log('a==b', a == b);
+
+
+const obj = {}
+Object.defineProperties(obj, {
+    'text': {
+        value: 1,
+        writable: true,
+        enumerable: true,
+        configurable: true
+    }
+})
+console.dir(obj)

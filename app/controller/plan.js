@@ -12,6 +12,12 @@ const dayjs = require('dayjs')
 const moment = require('moment')
 const jwtErr = require('../middleware/jwtErr')
 
+function toPercent(point) {
+    var str = Number(point * 100).toFixed(1);
+    str += "%";
+    return str;
+}
+
 const Controller = require('egg').Controller
 
 class PlanController extends Controller {
@@ -69,7 +75,7 @@ class PlanController extends Controller {
                 obj.amount = daily_money
                 detailArr.push(obj)
                 obj.total = detailArr.reduce((pre, cur) => {
-                    return pre += cur.amount
+                    return pre += Number(cur.amount)
                 }, 0)
                 obj.date = dayjs(start_date, 'YYYY-MM-DD').add(day, 'day').format('YYYY-MM-DD')
             }
@@ -99,6 +105,9 @@ class PlanController extends Controller {
             // 也就是, 登录A账户，那么所作的操作都得加上A的ID，
             // 后续对数据库操作的时候，就可以指定ID操作
             const end_date = dayjs(start_date, 'YYYY-MM-DD').add(8, 'hour').add(period, 'day').format('YYYY-MM-DD')
+            // 
+            const target_money = daily_money * period
+            const saved_money = 0
             const result = await ctx.service.plan.add({
                 user_id: decode.id,
                 name,
@@ -106,8 +115,8 @@ class PlanController extends Controller {
                 start_date,
                 'end-date': end_date,
                 daily_money,
-                target_money: daily_money * period,
-                saved_money: 0.5,
+                target_money,
+                saved_money,
                 picture,
             })
             if (result) {
@@ -118,7 +127,6 @@ class PlanController extends Controller {
                 // ]
                 const hand = this.handle_PlanDetail(start_date, daily_money, period)
                 const detailArr = hand()
-
                 ctx.body = {
                     code: 200,
                     msg: '添加Plan成功',
@@ -130,9 +138,10 @@ class PlanController extends Controller {
                         start_date,
                         end_date,
                         daily_money,
-                        target_money: daily_money * 365,
-                        saved_money: 0.5,
-                        picture
+                        target_money,
+                        saved_money,
+                        persentage: toPercent(saved_money / target_money),
+                        picture,
                     }
                 }
             } else {
@@ -163,7 +172,6 @@ class PlanController extends Controller {
     async delete() {
         const { ctx, app } = this;
         const { id } = ctx.request.body;
-
         if (!id) {
             ctx.body = {
                 code: 400,
@@ -171,26 +179,25 @@ class PlanController extends Controller {
                 data: null
             }
         }
-
         try {
-            const QUERY_STR = 'date'
-            let sql = `select ${QUERY_STR} from book where id=${id}`
-            const date = await app.mysql.query(sql);
+            // const QUERY_STR = 'date'
+            // let sql = `select ${QUERY_STR} from book where id=${id}`
+            // const date = await app.mysql.query(sql);
             let user_id
             const token = ctx.request.header.authorization;
             const decode = await app.jwt.verify(token, app.config.jwt.secret);
             if (!decode) return
             user_id = decode.id
-            const result = await ctx.service.book.delete(id, user_id);
+            const result = await ctx.service.plan.delete(id, user_id);
             ctx.body = {
                 code: 200,
-                msg: '删除Book成功',
-                data: date,
+                msg: '删除Plan成功',
+                data: id,
             }
         } catch (error) {
             ctx.body = {
                 code: 500,
-                msg: '删除Book系统错误',
+                msg: '删除Plan系统错误',
                 data: null
             }
         }

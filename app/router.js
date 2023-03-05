@@ -21,6 +21,7 @@ module.exports = app => {
   router.get('/api/user/get_userinfo', _jwt, controller.user.getUserInfo)
   router.post('/api/user/edit_userinfo', _jwt, controller.user.editUserInfo)
   router.post('/api/upload/', controller.upload.upload)
+
   // 账单
   router.post('/api/bill/add', _jwt, controller.bill.add)
   router.get('/api/bill/list', _jwt, controller.bill.list); // 获取账单列表
@@ -30,6 +31,7 @@ module.exports = app => {
   router.post('/api/bill/update', _jwt, controller.bill.update); // 账单更新
   router.post('/api/bill/delete', _jwt, controller.bill.delete); // 删除账单
   router.get('/api/bill/data', _jwt, controller.bill.data); // 获取数据
+
   // Book
   router.post('/api/book/add', _jwt, controller.book.AddCategory); // 添加Book
   router.post('/api/book/del', _jwt, controller.book.delete); // // 删除Book
@@ -40,8 +42,9 @@ module.exports = app => {
   // Budget 
   router.post('/api/budget/add', _jwt, controller.budget.setBudget); // 添加Budget
   router.get('/api/budget/getUserBudget', _jwt, controller.budget.getUserBudget); // 添加Budget
-  // Plan
+  // Plan 
   router.post('/api/plan/add', _jwt, controller.plan.CreatePlan); // 添加Plan
+  router.post('/api/plan/delete', _jwt, controller.plan.delete); // 添加Plan
   // Inventory
   router.post('/api/inventory/CreateInventory', _jwt, controller.inventory.CreateInventory); // 创建Inventory
   router.post('/api/inventory/add_goods', _jwt, controller.inventory.addGoods); // 添加goods  

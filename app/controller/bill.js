@@ -29,7 +29,7 @@ class BillController extends Controller {
         // 
         const { ctx, app } = this
         // 获取请求头中携带的参数
-        const { pay_type, account_id, book_id, book_name, book_type, type_id, type_name, category_id, category_name, amount, date = dayjs().format('YYYY-MM-DD HH:mm:ss'), remark = '' } = ctx.request.body
+        const { pay_type, account_id, book_id, book_type, category_id, category_name, amount, date = dayjs().format('YYYY-MM-DD HH:mm:ss'), remark = '' } = ctx.request.body
         // ❌处理参数中“key”写错的情况
         if (!amount || !category_id || !category_name || !date || !pay_type || !account_id) {
             ctx.body = {
@@ -51,15 +51,22 @@ class BillController extends Controller {
                 // user_id默认添加到每个账单项，作为后续获取指定用户账单的标识,
                 // 也就是, 登录A账户，那么所作的操作都得加上A的ID，
                 // 后续对数据库操作的时候，就可以指定ID操作
+                /**
+                 * 找type_id和type_name 
+                 * 找book_name
+                 */
+                const book_name = await app.mysql.query(`select name from book where id =${book_id}`)
+                const type_id = await app.mysql.query(`select type_id from category where id =${category_id}`)
+                const type_name = await app.mysql.query(`select name from type where id =${type_id[0].type_id}`)
                 const result = await ctx.service.bill.add({
                     user_id,
                     pay_type,
                     account_id,
                     book_id,
-                    book_name,
+                    book_name: book_name[0].name,
                     book_type,
-                    type_id,
-                    type_name,
+                    type_id: type_id[0].type_id,
+                    type_name: type_name[0].name,
                     category_id,
                     category_name,
                     amount,
@@ -82,17 +89,17 @@ class BillController extends Controller {
                         code: 200,
                         msg: '添加Bill成功',
                         data: {
-                            budget_mode,
-                            setBudget,
+                            budget_mode: budget_mode[0].budget_mode,
+                            // setBudget,
                             id: result.insertId,
                             user_id,
                             pay_type,
                             account_id,
                             book_id,
-                            book_name,
+                            book_name: book_name[0].name,
                             book_type,
-                            type_id,
-                            type_name,
+                            type_id: type_id[0].type_id,
+                            type_name: type_name[0].name,
                             category_id,
                             category_name,
                             amount,
@@ -111,124 +118,11 @@ class BillController extends Controller {
             }
         }
     }
-    // async list() {
-    //     const { ctx, app } = this
-    //     const { date, page = 1, page_size = 5, category_id = 'all' } = ctx.query
-    //     try {
-    //         let user_id
-    //         // Token解析，拿到user_id
-    //         const token = ctx.request.header.authorization
-    //         const decode = await app.jwt.verify(token, app.config.jwt.secret)
-    //         if (!decode) return
-    //         else {
-    //             user_id = decode.id
-    //             // 拿到账单
-    //             const list = await ctx.service.bill.list(user_id)
-    //             // 过滤出 月份和类型 所对应的帐单列表
-    //             const _list = list.filter(item => {
-    //                 // 如果 category_id不为 “all”
-    //                 if (category_id != 'all') {
-    //                     // 账单日期与用户当前提交的日期 相等 
-    //                     return moment(Number(item.date)).format('YYYY-MM') == date && category_id == item.category_id //用户提交的id与账单的id一致
-    //                 }
-    //                 // category_id为 “all”
-    //                 else {
-    //                     return moment(Number(item.date)).format('YYYY-MM') == date   // 账单日期与用户当前提交的日期 相等 
-    //                 }
-    //             })
-    //             // 格式化数据  将其封装成对象格式
-    //             let listMap = _list.reduce((prev, crrV) => {
-    //                 // prev默认初始值是一个空数组[]
-    //                 // 把第一个账单项的时间格式化为YYYY-MM-DD
-    //                 const date = moment(Number(crrV.date)).format('YYYY-MM-DD')
-    //                 // 如果能在累加的数组中找到当前项日期date，那么在数组中加入项bills数组
-    //                 if (prev && prev.length && prev.findIndex(crrV => crrV.date == date) > -1) {
-    //                     const index = prev.findIndex(item => item.date == date)
-    //                     prev[index].bills.push(crrV)
-    //                 }
-    //                 if (prev && prev.length && prev.findIndex(crrV => crrV.date == date) == -1) {
-    //                     prev.push({
-    //                         date,
-    //                         bills: [crrV]
-    //                     })
-    //                 }
-    //                 // 如果是空数组，则添加第一个crrV，格式化为下列模式
-    //                 if (!prev.length) {
-    //                     prev.push({
-    //                         date,
-    //                         bills: [crrV]
-    //                     })
-    //                 }
-    //                 return prev
-    //             }, [].sort((a, b) => moment(b.date) - moment(a.date))
-    //             )
-    //             //             console.log('////////格式化封装对象/////////');
-    //             //             console.log(listMap);
-    //             //             console.log('////////格式化封装对象/////////');
-
-    //             //             //             /**
-    //             //             //              * 分页处理，listMap是格式化后的全部数据，还未分页。
-    //             //             //              */
-    //             const filterListMap = listMap.slice((page - 1) * page_size, page * page_size)
-
-    //             //             //             // 计算月总收入与指出
-    //             //             //             // 获取当月所有帐单列表
-    //             let __list = list.filter(item => moment(Number(item.date)).format('YYYY-MM') == date)
-    //             //             //             // 计算支出
-    //             let totalExpense = __list.reduce((curr, item) => {
-    //                 if (item.pay_type == 1) {
-    //                     curr += Number(item.amount)
-    //                     return curr
-    //                 }
-    //                 return curr
-    //             }, 0)
-    //             //             // 计算收入
-    //             let totalIncome = __list.reduce((curr, item) => {
-    //                 if (item.pay_type == 2) {
-    //                     curr += Number(item.amount)
-    //                     return curr
-    //                 }
-    //                 return curr
-    //             }, 0)
-
-    //             const _format = item => moment(Number(item)).format('YYYY-MM-DD')
-    //             const edit_date = arr => arr.map(item => item.date = _format(item.date))
-    //             function format_date(arr) {
-    //                 arr.map(item => edit_date(item.bills))
-    //             }
-    //             format_date(filterListMap)
-
-    //             ctx.body = {
-    //                 code: 200,
-    //                 msg: '数据请求成功',
-    //                 data: {
-    //                     totalExpense,
-    //                     totalIncome,
-    //                     totalPage: Math.ceil(listMap.length / page_size),
-    //                     list: filterListMap || [],
-
-    //                 }
-    //             }
-    //         }
-    //     }
-    //     catch (error) {
-    //         console.error(error)
-    //         ctx.body = {
-    //             code: 500,
-    //             msg: 'list系统错误',
-    //             data: {
-    //                 date,
-    //                 page,
-    //                 page_size,
-    //                 category_id,
-    //             }
-    //         }
-    //     }
-    // }
     async list() {
         const { ctx, app } = this;
         // 获取，日期 date，分页数据，类型 type_id，这些都是我们在前端传给后端的数据
         const { book_id, date, page, page_size, category_id = 'all' } = ctx.query
+        // 
         try {
             let user_id
             // 通过 token 解析，拿到 user_id
@@ -236,7 +130,6 @@ class BillController extends Controller {
             const decode = await app.jwt.verify(token, app.config.jwt.secret);
             if (!decode) return
             user_id = decode.id
-
             // 拿到当前用户的账单列表
             const list = await ctx.service.bill.list(user_id, book_id)
             /**
@@ -327,13 +220,58 @@ class BillController extends Controller {
                 }
                 return curr
             }, 0)
+            /**
+             * 账户
+             */
+            const ql = `select * from account where user_id=${user_id}`
+            const account = await app.mysql.query(ql)
+            // 
+            const Expense = await ctx.service.category.getAlltype(1)
+            const Income = await ctx.service.category.getAlltype(2)
+            const categories = await ctx.service.category.getAllCategory(user_id)
+            const typess = { Expense, Income }
 
+            // // 转化数据 => types 
+            for (const key in typess) {
+                typess[key].forEach(item => {
+                    Object.defineProperties(item, {
+                        'text': {
+                            value: item.name,
+                            writable: true,
+                            enumerable: true,
+                            configurable: true
+                        }
+                    })
+                    categories.forEach(category => {
+                        if (category.type_id == item.id) {
+                            Object.defineProperties(category, {
+                                'text': {
+                                    value: category.name,
+                                    writable: true,
+                                    enumerable: true,
+                                    configurable: true
+                                }
+                            })
+                            if (item.children == undefined) {
+                                item.children = []
+                                item.children.push(category)
+                            }
+                            else {
+                                item.children.push(category)
+                            }
+                        }
+                    })
+                })
+            }
             // 返回数据
             ctx.body = {
                 code: 200,
                 msg: '请求成功',
                 data: {
                     username: decode.username,
+                    account,
+                    // categories,
+                    typess,
                     // _list,
                     // totalExpense, // 当月支出
                     // totalIncome, // 当月收入
@@ -347,7 +285,7 @@ class BillController extends Controller {
         } catch {
             ctx.body = {
                 code: 500,
-                msg: '系统错误',
+                msg: '系统错误--bill-list',
                 data: null
             }
         }
