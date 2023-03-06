@@ -204,31 +204,41 @@ class PlanController extends Controller {
     }
     async update() {
         const { ctx, app } = this
-        const { id, name } = ctx.request.body;
-        if (!id || !name) {
+        const { id, daily_money, mode } = ctx.request.body;
+        if (!id || !daily_money) {
             ctx.body = {
                 code: 400,
                 msg: '参数错误',
                 data: null
             }
         }
-
         let user_id
         const token = ctx.request.header.authorization
         const decode = await app.jwt.verify(token, app.config.jwt.secret)
         if (!decode) return
         try {
-
             user_id = decode.id
-            const result = await ctx.service.book.update({
-                id,
-                user_id,
-                name,
-            })
+            const qqll = `select * from plan where id=${id}`
+            const plan = await this.app.mysql.query(qqll)
+            const row = { saved_money: 0 }
+            if (mode == 1) row.saved_money = plan[0].saved_money + Number(daily_money)
+            if (mode == 2) row.saved_money = plan[0].saved_money - Number(daily_money)
+
+            const options = {
+                where: {
+                    id: id
+                }
+            }
+            const result = await this.app.mysql.update('plan', row, options);
+            // const ql = `update plan set saved_money+=${amount} where id=${id}`
+            // const result = await this.app.mysql.query(ql)
             ctx.body = {
                 code: 200,
                 msg: '修改成功',
-                data: result
+                data: {
+                    result,
+                    plan
+                }
             }
         } catch (error) {
             ctx.body = {

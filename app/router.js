@@ -45,6 +45,7 @@ module.exports = app => {
   // Plan 
   router.post('/api/plan/add', _jwt, controller.plan.CreatePlan); // 添加Plan
   router.post('/api/plan/delete', _jwt, controller.plan.delete); // 添加Plan
+  router.post('/api/plan/update', _jwt, controller.plan.update); // 添加Plan
   // Inventory
   router.post('/api/inventory/CreateInventory', _jwt, controller.inventory.CreateInventory); // 创建Inventory
   router.post('/api/inventory/add_goods', _jwt, controller.inventory.addGoods); // 添加goods  
