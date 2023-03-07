@@ -1,7 +1,3 @@
-/**
-     * 计划接口
-     */
-
 'use strict'
 
 const Service = require('egg').Service
@@ -54,7 +50,6 @@ class PlanService extends Service {
         }
 
     }
-
 }
 
 module.exports = PlanService

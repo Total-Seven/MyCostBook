@@ -7,6 +7,20 @@
 const moment = require('moment')
 const jwtErr = require('../middleware/jwtErr')
 
+function keepTwoDecimalStr(num) {
+    const result = Number(num.toString().match(/^\d+(?:\.\d{0,2})?/));
+    let s = result.toString();
+    let rs = s.indexOf('.');
+    if (rs < 0) {
+        rs = s.length;
+        s += '.';
+    }
+    while (s.length <= rs + 2) {
+        s += '0';
+    }
+    return Number(s);
+};
+
 const Controller = require('egg').Controller
 
 class InventoryController extends Controller {
@@ -29,9 +43,9 @@ class InventoryController extends Controller {
             if (!decode) return
             // 计划商品列表的总金额、总数
             let total_amount = 0
-            if (goods_list.length != 0) {
+            if (goods_list.length !== 0) {
                 total_amount = goods_list.reduce((pre, cur) => {
-                    return pre += cur.amount
+                    return pre += keepTwoDecimalStr(cur.amount)
                 }, 0)
             }
             // 创建清单
@@ -57,6 +71,11 @@ class InventoryController extends Controller {
                     }
                 }
                 else {
+                    goods_list.forEach(element => {
+                        element.user_id = decode.id
+                        element.list_id = result.insertId
+                        element.list_name = name
+                    });
                     const goods = await ctx.service.goods.add(goods_list)
                     if (goods) {
                         // inventory = await app.mysql.query(sql);
@@ -96,15 +115,15 @@ class InventoryController extends Controller {
             ctx.body = {
                 code: 500,
                 msg: '添加清单-蛋疼',
-                data: { goods_list_length: goods_list.length }
+                data: { name, goods_list }
             }
         }
     }
     async addGoods() {
         const { ctx, app } = this
         // 获取请求头中携带的参数
-        const { name, amount, picture = '', list_id, list_name } = ctx.request.body
-        if (!name || !amount || !picture) {
+        const { name, amount, picture = '', list_id, list_name, describe } = ctx.request.body
+        if (!name || !amount || !list_id) {
             ctx.body = {
                 code: 500,
                 msg: '参数不能为空',
@@ -127,6 +146,7 @@ class InventoryController extends Controller {
                     picture,
                     list_id,
                     list_name,
+                    describe,
                 })
                 if (result) {
                     // 修改对应清单的总金额和商品总数
@@ -283,7 +303,47 @@ class InventoryController extends Controller {
         else {
             let user_id = decode.id
             const result = await ctx.service.inventory.getAllInventory(user_id)
+            const goods = await app.mysql.query(`select * from goods where user_id=${user_id}`)
             if (result) {
+                /**创建一个新数组
+                 * 改：total 
+                 * 增：isShow icon goods_list
+                 * /**
+                 *  * 增：last=>{name;amount,checked,isAddBtn}
+                 *  */
+                const arr = []
+                async function format_result(el) {
+                    const el_obj = el
+                    return new Promise(async (resolve, rejct) => {
+                        el_obj.isShow = false
+                        el_obj.total = el_obj.total_amount
+                        el_obj.icon = ""
+                        el_obj.goods_list = []
+                        const query_goodsList = await app.mysql.query(`select * from goods where list_id=${el_obj.id}`)
+                        query_goodsList.forEach(item => {
+                            item.checked = false
+                        })
+                        query_goodsList.push({ name: '+', amount: 88, checked: false, isAddBtn: true })
+                        el_obj.goods_list = query_goodsList
+                        resolve(el_obj)
+                    })
+                }
+                // format_result(el).then(obj => {
+                //     el = obj
+                // })
+                result.forEach(async (el) => {
+                    el.isShow = false
+                    el.total = el.total_amount
+                    el.icon = ""
+                    el.goods_list = []
+                    goods.forEach(item => {
+                        if (item.list_id == el.id) {
+                            item.checked = false
+                            el.goods_list.push(item)
+                        }
+                    })
+                    el.goods_list.push({ name: '+', amount: 88, checked: false, isAddBtn: true })
+                })
                 ctx.body = {
                     code: 200,
                     msg: "获取清单成功",
