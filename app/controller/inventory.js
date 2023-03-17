@@ -366,25 +366,20 @@ class InventoryController extends Controller {
         // 用户点击一键记账
         // 选择账户
         const { ctx, app } = this
-        const { inventory_id, account_id } = ctx.request.body
-
+        const { inventory_id, account_id, total_amount, goods_number, goods_id_list } = ctx.request.body
+        // JWT
         const token = ctx.request.header.authorization
         const decode = app.jwt.verify(token, app.config.jwt.secret)
         if (!decode) return
         else {
             try {
                 let user_id = decode.id
-                // 查找goods
-                const amounts = await app.mysql.query(`select amount from goods where user_id=${user_id} and list_id=${inventory_id}`)
-                const total_amount = amounts.reduce((pre, cur) => {
-                    return pre += cur.amount
-                }, 0)
-                // 自动类别：购物清单（）
-                // 自动账本：购物清单（）
-                // const ql = '购物清单'
+                // 自动选择购物清单账本
                 const book_id = await app.mysql.query(`select id from book where user_id=${user_id} and name='购物清单' `)
+                // 自动选择购物清单类别
                 const category_id = await app.mysql.query(`select id from category where user_id=${user_id} and name='购物清单' `)
                 if (total_amount || book_id || category_id) {
+                    // 1. 添加账单
                     const result = await ctx.service.bill.add({
                         user_id,
                         pay_type: 2,
@@ -400,16 +395,40 @@ class InventoryController extends Controller {
                         date: app.mysql.literals.now,
                     })
                     if (result) {
+                        // 2. 修改购物清单清单
+                        const pre_totalAmount = await app.mysql.query(`select total_amount from inventory where id = ${inventory_id}`)
+                        let res = {}
+                        if (pre_totalAmount[0].total_amount == total_amount) {
+                            // 如果全选了，修改时，给descriibe字段写入finish
+                            const ql = `update inventory set total_amount=total_amount-${total_amount},include_number=0,finish=1 where id = ${inventory_id}`
+                            res = await app.mysql.query(ql)
+                            var isEmptyInventory = true
+                        }
+                        else {
+                            const ql = `update inventory set total_amount=total_amount-${total_amount},include_number=include_number-${goods_number},finish=0 where id = ${inventory_id}`
+                            res = await app.mysql.query(ql)
+                            var isEmptyInventory = false
+                        }
+                        // 3. 修改Goods表
+                        for (let index = 0; index < goods_id_list.length; index++) {
+                            const id = goods_id_list[index];
+                            await app.mysql.delete('goods', {
+                                id,
+                                user_id,
+                            })
+                        }
+                        const new_inventory = await app.mysql.query(`select * from inventory where id = ${inventory_id}`)
+                        // 
                         ctx.body = {
+                            // 返回，修改是否成功，账单添加是否成功，商品修改是否成功
+                            //      修改后的清单信息，新添加的账单信息
                             code: 200,
                             msg: "成功",
                             data: {
-                                result,
-                                user_id,
-                                inventory_id,
-                                total_amount,
-                                book_id: book_id[0].id,
-                                category_id: category_id[0].id,
+                                update: res.protocol41 || null,
+                                isEmptyInventory,
+                                new_inventory,
+                                new_bill_id: { id: result.insertId, book_id: book_id[0].id, category_id: category_id[0].id, },
                             }
                         }
                     }
@@ -417,7 +436,10 @@ class InventoryController extends Controller {
                         ctx.body = {
                             code: 500,
                             msg: "失败--添加bill失败",
-                            data: null
+                            data: {
+                                book_id,
+                                category_id
+                            }
                         }
                     }
 
