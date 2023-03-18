@@ -38,6 +38,425 @@ function getNowTime() {
     return nowDate = Y + '-' + M + '-' + D + ' ' + H + ':' + i + ':' + s;
 }
 
+function generative_initial_categories(user_id) {
+    return [
+        // 1
+        {
+            name: '三餐',
+            type_id: 1,
+            user_id: user_id,
+            avatar: '',
+            caution: 0,
+        },
+        {
+            name: '柴米油盐',
+            type_id: 1,
+            user_id: user_id,
+            avatar: '',
+            caution: 0,
+        },
+        {
+            name: '食材',
+            type_id: 1,
+            user_id,
+            avatar: '',
+            caution: 0,
+        },
+        {
+            name: '零食',
+            type_id: 1,
+            user_id,
+            avatar: '',
+            caution: 0,
+        },
+        {
+            name: '奶茶',
+            type_id: 1,
+            user_id,
+            avatar: '',
+            caution: 0,
+        },
+        {
+            name: '咖啡',
+            type_id: 1,
+            user_id,
+            avatar: '',
+            caution: 0,
+        },
+        // 5
+        {
+            name: '日常',
+            type_id: 5,
+            user_id,
+            avatar: '',
+            caution: 0,
+        },
+        {
+            name: '鞋服',
+            type_id: 5,
+            user_id,
+            avatar: '',
+            caution: 0,
+        },
+        {
+            name: '数码',
+            type_id: 5,
+            user_id,
+            avatar: '',
+            caution: 0,
+        },
+        {
+            name: '包包',
+            type_id: 5,
+            user_id,
+            avatar: '',
+            caution: 0,
+        },
+        {
+            name: '厨房用品',
+            type_id: 5,
+            user_id,
+            avatar: '',
+            caution: 0,
+        },
+        {
+            name: '电器',
+            type_id: 5,
+            user_id,
+            avatar: '',
+            caution: 0,
+        },
+        // 3
+        {
+            name: '地铁',
+            type_id: 3,
+            user_id,
+            avatar: '',
+            caution: 0,
+        },
+        {
+            name: '地铁',
+            type_id: 3,
+            user_id,
+            avatar: '',
+            caution: 0,
+        },
+        {
+            name: '公交',
+            type_id: 3,
+            user_id,
+            avatar: '',
+            caution: 0,
+        },
+        {
+            name: '打车',
+            type_id: 3,
+            user_id,
+            avatar: '',
+            caution: 0,
+        },
+        {
+            name: '火车',
+            type_id: 3,
+            user_id,
+            avatar: '',
+            caution: 0,
+        },
+        {
+            name: '共享单车',
+            type_id: 3,
+            user_id,
+            avatar: '',
+            caution: 0,
+        },
+        {
+            name: '汽车',
+            type_id: 3,
+            user_id,
+            avatar: '',
+            caution: 0,
+        },
+        {
+            name: '加油',
+            type_id: 3,
+            user_id,
+            avatar: '',
+            caution: 0,
+        },
+        // 17
+        {
+            name: '房租',
+            type_id: 17,
+            user_id,
+            avatar: '',
+            caution: 0,
+        },
+        {
+            name: '物业水电',
+            type_id: 17,
+            user_id,
+            avatar: '',
+            caution: 0,
+        },
+        {
+            name: '维修',
+            type_id: 17,
+            user_id,
+            avatar: '',
+            caution: 0,
+        },
+        // 4
+        {
+            name: '快递',
+            type_id: 4,
+            user_id,
+            avatar: '',
+            caution: 0,
+        },
+        {
+            name: '理发',
+            type_id: 4,
+            user_id,
+            avatar: '',
+            caution: 0,
+        },
+        // 7
+        {
+            name: '理发',
+            type_id: 7,
+            user_id,
+            avatar: '',
+            caution: 0,
+        },
+        {
+            name: '网课',
+            type_id: 7,
+            user_id,
+            avatar: '',
+            caution: 0,
+        },
+        {
+            name: '书籍',
+            type_id: 7,
+            user_id,
+            avatar: '',
+            caution: 0,
+        },
+        {
+            name: '培训',
+            type_id: 7,
+            user_id,
+            avatar: '',
+            caution: 0,
+        },
+        // 9
+        {
+            name: '送礼',
+            type_id: 9,
+            user_id,
+            avatar: '',
+            caution: 0,
+        },
+        {
+            name: '发红包',
+            type_id: 9,
+            user_id,
+            avatar: '',
+            caution: 0,
+        },
+        {
+            name: '孝心',
+            type_id: 9,
+            user_id,
+            avatar: '',
+            caution: 0,
+        },
+        {
+            name: '请客',
+            type_id: 9,
+            user_id,
+            avatar: '',
+            caution: 0,
+        },
+        {
+            name: '亲密付',
+            type_id: 9,
+            user_id,
+            avatar: '',
+            caution: 0,
+        },
+        // 18
+        {
+            name: '电影',
+            type_id: 18,
+            user_id,
+            avatar: '',
+            caution: 0,
+        },
+        {
+            name: '约会',
+            type_id: 18,
+            user_id,
+            avatar: '',
+            caution: 0,
+        },
+        {
+            name: '游戏',
+            type_id: 18,
+            user_id,
+            avatar: '',
+            caution: 0,
+        },
+        {
+            name: '演唱会',
+            type_id: 18,
+            user_id,
+            avatar: '',
+            caution: 0,
+        },
+        {
+            name: '健身',
+            type_id: 18,
+            user_id,
+            avatar: '',
+            caution: 0,
+        },
+        // 19
+        {
+            name: '化妆品',
+            type_id: 19,
+            user_id,
+            avatar: '',
+            caution: 0,
+        },
+        {
+            name: '护肤品',
+            type_id: 19,
+            user_id,
+            avatar: '',
+            caution: 0,
+        },
+        // 8
+        {
+            name: '门票',
+            type_id: 8,
+            user_id,
+            avatar: '',
+            caution: 0,
+        },
+        {
+            name: '酒店',
+            type_id: 8,
+            user_id,
+            avatar: '',
+            caution: 0,
+        },
+        {
+            name: '团费',
+            type_id: 8,
+            user_id,
+            avatar: '',
+            caution: 0,
+        },
+        {
+            name: '伴手礼',
+            type_id: 8,
+            user_id,
+            avatar: '',
+            caution: 0,
+        },
+        {
+            name: '团费',
+            type_id: 8,
+            user_id,
+            avatar: '',
+            caution: 0,
+        },
+        // 6
+        {
+            name: '药',
+            type_id: 6,
+            user_id,
+            avatar: '',
+            caution: 0,
+        },
+        {
+            name: '治疗',
+            type_id: 6,
+            user_id,
+            avatar: '',
+            caution: 0,
+        },
+        {
+            name: '就诊',
+            type_id: 6,
+            user_id,
+            avatar: '',
+            caution: 0,
+        },
+        {
+            name: '住院',
+            type_id: 6,
+            user_id,
+            avatar: '',
+            caution: 0,
+        },
+        {
+            name: '保健',
+            type_id: 6,
+            user_id,
+            avatar: '',
+            caution: 0,
+        },
+        // 20
+        {
+            name: '视频VIP',
+            type_id: 6,
+            user_id,
+            avatar: '',
+            caution: 0,
+        },
+        {
+            name: '书籍VIP',
+            type_id: 6,
+            user_id,
+            avatar: '',
+            caution: 0,
+        },
+        {
+            name: '购物VIP',
+            type_id: 6,
+            user_id,
+            avatar: '',
+            caution: 0,
+        },
+        {
+            name: '社交VIP',
+            type_id: 6,
+            user_id,
+            avatar: '',
+            caution: 0,
+        },
+        // 21
+        {
+            name: '话费',
+            type_id: 6,
+            user_id,
+            avatar: '',
+            caution: 0,
+        },
+        {
+            name: '宽带',
+            type_id: 6,
+            user_id,
+            avatar: '',
+            caution: 0,
+        },
+    ]
+}
+
+
+
 const Controller = require('egg').Controller
 
 
@@ -126,7 +545,11 @@ class UserController extends Controller {
                     avatar: inconFaultAvatar,
                     caution: 0,
                 })
-
+                /**
+                 * 创建：默认类别
+                 */
+                const list_categories = generative_initial_categories(result.insertId)
+                const categories = await app.mysql.insert('category', list_categories)
                 // 自动登入
                 // 生成token
                 //  app.jwt.sign 两个参数: 第一个是对象，第二个是加密字符
@@ -148,6 +571,7 @@ class UserController extends Controller {
                                 inventory_book_id: book.insertId + 1,
                                 inventory_category_id: category.insertId,
                                 account_id: account.insertId,
+                                categories: categories.insertId || null,
                             },
                         }
                     }
