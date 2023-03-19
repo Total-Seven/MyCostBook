@@ -24,11 +24,11 @@ module.exports = appInfo => {
   };
   config.mysql = {
     client: {
-      host: 'localhost',
+      host: '47.102.117.116',
       port: '3306',
       user: 'root',
-      password: '7777',
-      database: 'juejue-cost',
+      password: 'meiyoumima0.0',
+      database: 'rabbit-cost',
     },
     app: true,
     agent: false,
