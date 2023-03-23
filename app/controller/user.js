@@ -834,6 +834,83 @@ class UserController extends Controller {
 
 
     }
+    // async getUserInfo() {
+    //     const { ctx, app } = this
+    //     const token = ctx.request.header.authorization
+    //     const decode = app.jwt.verify(token, app.config.jwt.secret)
+    //     if (!decode) return
+    //     try { // 查找数据库
+    //         const userInfo = await ctx.service.user.getUserByName(decode.username)
+    //         const books = await ctx.service.book.getAllbook(userInfo.id)
+    //         const categories = await ctx.service.category.getAllCategory(userInfo.id)
+    //         const Expend = await ctx.service.category.getAlltype(1)
+    //         const Income = await ctx.service.category.getAlltype(2)
+    //         const inventory = await ctx.service.inventory.getAllInventory(userInfo.id)
+    //         const account = await ctx.service.account.getAllAccount(userInfo.id)
+    //         const plan = await app.mysql.query(`select * from plan where user_id=${userInfo.id}`)
+    //         const typess = { Expend, Income }
+    //         // 转化数据 => types
+    //         let obj = {}
+    //         for (const key in typess) {
+    //             typess[key].forEach(item => {
+    //                 categories.forEach(category => {
+    //                     if (category.type_id == item.id) {
+    //                         if (item.list == undefined) {
+    //                             item.list = []
+    //                             item.list.push(category)
+    //                         }
+    //                         else {
+    //                             item.list.push(category)
+    //                         }
+    //                     }
+    //                 })
+    //             })
+    //         }
+    //         // 计算SavedMoney
+    //         const Saved_Money = plan.reduce((pre, cur) => {
+    //             return pre += cur.saved_money
+    //         }, 0)
+    //         //
+    //         let assets = 0
+    //         let debt = 0
+    //         const net = account.reduce((pre, cur) => {
+    //             cur.amount > 0 ? assets += cur.amount : debt -= cur.amount
+    //             return pre += cur.amount
+    //         }, 0)
+    //         // 返回数据库中的信息
+    //         ctx.body = {
+    //             code: 200,
+    //             msg: 'getUserInfo成功',
+    //             data: {
+    //                 plan,
+    //                 net,
+    //                 Saved_Money,
+    //                 userInfo,
+    //                 typess,
+    //                 // id: userInfo.id,
+    //                 // username: userInfo.username,
+    //                 // signature: userInfo.signature || '',
+    //                 // // 👇 初始化写法
+    //                 // avatar: userInfo.avatar || defaultAvatar,
+    //                 // default_book_id: userInfo.default_book_id,
+    //                 books,
+    //                 // typess: obj,
+    //                 categories,
+    //                 inventory,
+    //                 account,
+    //                 inconFaultAvatar,
+    //             }
+    //         }
+    //     } catch (error) {
+    //         console.log(error);
+    //         ctx.body = {
+    //             code: 500,
+    //             msg: '系统错误',
+    //             data: null
+    //         }
+    //     }
+
+    // }
     async getUserInfo() {
         const { ctx, app } = this
         const token = ctx.request.header.authorization
@@ -865,6 +942,15 @@ class UserController extends Controller {
                         }
                     })
                 })
+            }
+            for (let index = 0; index < categories.length; index++) {
+                // 查每个category对应的金额
+                // 根据类别，写入expend or income 
+                const allBill = await app.mysql.query(`select amount from bill where category_id=${categories[index].id}`)
+                const totalamount = allBill.reduce((pre, cur) => {
+                    return pre + cur.amount
+                }, 0)
+                categories[index].amount = totalamount
             }
             // 计算SavedMoney
             const Saved_Money = plan.reduce((pre, cur) => {

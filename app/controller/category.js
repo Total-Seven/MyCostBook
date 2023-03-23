@@ -137,7 +137,6 @@ class BookController extends Controller {
                 data: null
             }
         }
-
         let user_id
         const token = ctx.request.header.authorization
         const decode = await app.jwt.verify(token, app.config.jwt.secret)
@@ -145,7 +144,7 @@ class BookController extends Controller {
         try {
 
             user_id = decode.id
-            const result = await ctx.service.book.update({
+            const result = await ctx.service.category.update({
                 id,
                 user_id,
                 name,

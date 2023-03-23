@@ -39,7 +39,8 @@ module.exports = app => {
   router.post('/api/book/update', _jwt, controller.book.update); // Book更新
   // Category
   router.post('/api/category/add', _jwt, controller.category.AddCategory); // 添加Category
-  router.post('/api/category/delete', _jwt, controller.category.delete); // 添加Category
+  router.post('/api/category/delete', _jwt, controller.category.delete); // 删除Category
+  router.post('/api/category/update', _jwt, controller.category.update); // 修改Category
   // Budget 
   router.post('/api/budget/add', _jwt, controller.budget.setBudget); // 添加Budget
   router.get('/api/budget/getUserBudget', _jwt, controller.budget.getUserBudget); // 添加Budget

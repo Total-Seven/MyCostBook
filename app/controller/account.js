@@ -140,15 +140,24 @@ class BookController extends Controller {
         else {
             user_id = decode.id
             // const ql = `select * from account where user_id=${user_id}`
-            const ql = `select * from bill where user_id=${user_id}`
-            const bill = await app.mysql.query(ql)
-            if (bill) {
+            // const ql = `select * from bill where user_id=${user_id}`
+            const ql = `select * from account where user_id=${user_id}`
+            const account = await app.mysql.query(ql)
+            // const bill = await app.mysql.query(ql)
+            if (account) {
                 let assets = 0
                 let debt = 0
-                bill.reduce((pre, cur) => {
-                    cur.pay_type == 1 ? assets += cur.amount : debt += cur.amount
+                const net = account.reduce((pre, cur) => {
+                    cur.amount > 0 ? assets += cur.amount : debt -= cur.amount
+                    return pre += cur.amount
                 }, 0)
-                const net = assets - debt
+
+                // let assets = 0
+                // let debt = 0
+                // bill.reduce((pre, cur) => {
+                //     cur.pay_type == 1 ? assets += cur.amount : debt += cur.amount
+                // }, 0)
+                // const net = assets - debt
                 const qll = `select * from account where user_id=${user_id}`
                 const accounts = await app.mysql.query(qll)
                 ctx.body = {

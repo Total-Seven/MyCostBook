@@ -120,9 +120,9 @@ class BillController extends Controller {
     }
     async transform() {
         const { ctx, app } = this
-        // 获取请求头中携带的参数
+        // // 获取请求头中携带的参数
         const { out_account_id, in_account_id, amount, date = dayjs().format('YYYY-MM-DD HH:mm:ss'), remark = '' } = ctx.request.body
-        // 
+        //
         if (!out_account_id || !in_account_id || !amount || !date) {
             ctx.body = {
                 code: 400,
@@ -134,12 +134,10 @@ class BillController extends Controller {
             let user_id
             const token = ctx.request.header.authorization
             const decode = await app.jwt.verify(token, app.config.jwt.secret)
-            if (!decode) {
-                return
-            }
+            if (!decode) return
             else {
                 user_id = decode.id
-                // 
+                //
                 const result = await ctx.service.bill.add({
                     user_id,
                     pay_type: 3,
@@ -150,7 +148,7 @@ class BillController extends Controller {
 
                     book_id: 0,
                     book_name: '',
-                    book_type: '',
+                    book_type: 0,
                     type_id: 0,
                     type_name: '',
                     category_id: 0,
@@ -194,6 +192,7 @@ class BillController extends Controller {
                 data: null
             }
         }
+
     }
     async list() {
         const { ctx, app } = this;
