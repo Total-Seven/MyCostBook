@@ -321,9 +321,9 @@ class InventoryController extends Controller {
                         el_obj.goods_list = []
                         const query_goodsList = await app.mysql.query(`select * from goods where list_id=${el_obj.id}`)
                         query_goodsList.forEach(item => {
-                            item.checked = false
+                            item.checked = true
                         })
-                        query_goodsList.push({ name: '+', amount: 88, checked: false, isAddBtn: true })
+                        query_goodsList.push({ name: '+', amount: 0, checked: false, isAddBtn: true })
                         el_obj.goods_list = query_goodsList
                         resolve(el_obj)
                     })
@@ -338,7 +338,7 @@ class InventoryController extends Controller {
                     el.goods_list = []
                     goods.forEach(item => {
                         if (item.list_id == el.id) {
-                            item.checked = false
+                            item.checked = true
                             el.goods_list.push(item)
                         }
                     })

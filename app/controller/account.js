@@ -97,11 +97,11 @@ class BookController extends Controller {
     }
     async update() {
         const { ctx, app } = this
-        const { id, name } = ctx.request.body;
-        if (!id || !name) {
+        const { id, name, amount } = ctx.request.body;
+        if (!id) {
             ctx.body = {
                 code: 400,
-                msg: '参数错误',
+                msg: 'ID为空',
                 data: null
             }
         }
@@ -111,12 +111,13 @@ class BookController extends Controller {
         const decode = await app.jwt.verify(token, app.config.jwt.secret)
         if (!decode) return
         try {
-
             user_id = decode.id
-            const result = await ctx.service.book.update({
+            const result = await ctx.service.account.update({
                 id,
-                user_id,
                 name,
+                amount,
+
+                user_id,
             })
             ctx.body = {
                 code: 200,

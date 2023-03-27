@@ -5,6 +5,8 @@ const defaultAvatar = 'https://tse4-mm.cn.bing.net/th/id/OIP-C.MC8Z714Z8RHfT8Qad
 const inconFaultAvatar = 'https://s2.loli.net/2023/02/10/cZkBewG65J3SjHr.png'
 
 const dayjs = require('dayjs')
+var isBetween = require('dayjs/plugin/isBetween')
+dayjs.extend(isBetween)
 var myDate = new Date();	//创建Date对象
 function getNowTime() {
     let nowDate = ''
@@ -574,7 +576,19 @@ function generative_initial_categories(user_id) {
         },
     ]
 }
-
+function keepTwoDecimalStr(num) {
+    const result = Number(num.toString().match(/^\d+(?:\.\d{0,2})?/));
+    let s = result.toString();
+    let rs = s.indexOf('.');
+    if (rs < 0) {
+        rs = s.length;
+        s += '.';
+    }
+    while (s.length <= rs + 2) {
+        s += '0';
+    }
+    return Number(s);
+};
 
 
 const Controller = require('egg').Controller
@@ -926,8 +940,64 @@ class UserController extends Controller {
             const account = await ctx.service.account.getAllAccount(userInfo.id)
             const plan = await app.mysql.query(`select * from plan where user_id=${userInfo.id}`)
             const typess = { Expend, Income }
-            // 转化数据 => types 
-            let obj = {}
+
+            /**
+             * 转化数据 
+             */
+            // => book 加总金额 月金额
+            for (let index = 0; index < books.length; index++) {
+                const allBill = await app.mysql.query(`select pay_type,date,amount from bill where book_id=${books[index].id}`)
+                // 
+                const total_obj = { income: 0, expend: 0, totalamount: 0 }
+                const month_obj = { income: 0, expend: 0, totalamount: 0 }
+                // 
+                total_obj.totalamount = allBill.reduce((pre, cur) => {
+                    if (cur.pay_type === 1) total_obj.income += cur.amount
+                    if (cur.pay_type === 2) total_obj.expend += cur.amount
+                    // 
+                    return pre + keepTwoDecimalStr(cur.amount)
+                }, 0)
+                const oneMonthAgo = dayjs().subtract(1, 'month')
+                // 过滤近一个月的账单
+                const newArr = allBill.filter(item => {
+                    return dayjs(item.date).isBetween(oneMonthAgo, dayjs())
+                })
+                month_obj.totalamount = newArr.reduce((pre, cur) => {
+                    if (cur.pay_type === 1) month_obj.income += cur.amount
+                    if (cur.pay_type === 2) month_obj.expend += cur.amount
+                    // 
+                    return pre + keepTwoDecimalStr(cur.amount)
+                }, 0)
+                books[index].total = total_obj
+                // 
+                books[index].moneth = month_obj
+            }
+            // => expend income 加总金额
+            for (let index = 0; index < Expend.length; index++) {
+                const allBill = await app.mysql.query(`select amount from bill where type_id=${Expend[index].id}`)
+                const totalamount = allBill.reduce((pre, cur) => {
+                    return pre + keepTwoDecimalStr(cur.amount)
+                }, 0)
+                Expend[index].amount = totalamount
+            }
+            for (let index = 0; index < Income.length; index++) {
+                const allBill = await app.mysql.query(`select amount from bill where type_id=${Income[index].id}`)
+                const totalamount = allBill.reduce((pre, cur) => {
+                    return pre + keepTwoDecimalStr(cur.amount)
+                }, 0)
+                Income[index].amount = totalamount
+            }
+            // => categories 加总金额
+            for (let index = 0; index < categories.length; index++) {
+                // 查每个category对应的金额
+                // 根据类别，写入expend or income 
+                const allBill = await app.mysql.query(`select amount from bill where category_id=${categories[index].id}`)
+                const totalamount = allBill.reduce((pre, cur) => {
+                    return pre + keepTwoDecimalStr(cur.amount)
+                }, 0)
+                categories[index].amount = totalamount
+            }
+            // => types 构造合成对象
             for (const key in typess) {
                 typess[key].forEach(item => {
                     categories.forEach(category => {
@@ -943,20 +1013,11 @@ class UserController extends Controller {
                     })
                 })
             }
-            for (let index = 0; index < categories.length; index++) {
-                // 查每个category对应的金额
-                // 根据类别，写入expend or income 
-                const allBill = await app.mysql.query(`select amount from bill where category_id=${categories[index].id}`)
-                const totalamount = allBill.reduce((pre, cur) => {
-                    return pre + cur.amount
-                }, 0)
-                categories[index].amount = totalamount
-            }
             // 计算SavedMoney
             const Saved_Money = plan.reduce((pre, cur) => {
                 return pre += cur.saved_money
             }, 0)
-            // 
+            // 净余额、收入、支出
             let assets = 0
             let debt = 0
             const net = account.reduce((pre, cur) => {
