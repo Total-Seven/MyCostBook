@@ -789,10 +789,82 @@ class UserController extends Controller {
         // 
         const ql = `select * from account where user_id=${userInfo.id}`
         const account = await app.mysql.query(ql)
+        // Books
         const books = await ctx.service.book.getAllbook(userInfo.id)
+        for (let index = 0; index < books.length; index++) {
+            const allBill = await app.mysql.query(`select pay_type,date,amount from bill where book_id=${books[index].id}`)
+            //
+            const total_obj = { income: 0, expend: 0, totalamount: 0 }
+            const month_obj = { income: 0, expend: 0, totalamount: 0 }
+            //
+            total_obj.totalamount = allBill.reduce((pre, cur) => {
+                if (cur.pay_type === 1) total_obj.income += cur.amount
+                if (cur.pay_type === 2) total_obj.expend += cur.amount
+                //
+                return pre + keepTwoDecimalStr(cur.amount)
+            }, 0)
+            const oneMonthAgo = dayjs().subtract(1, 'month')
+            // 过滤近一个月的账单
+            const newArr = allBill.filter(item => {
+                return dayjs(item.date).isBetween(oneMonthAgo, dayjs())
+            })
+            month_obj.totalamount = newArr.reduce((pre, cur) => {
+                if (cur.pay_type === 1) month_obj.income += cur.amount
+                if (cur.pay_type === 2) month_obj.expend += cur.amount
+                //
+                return pre + keepTwoDecimalStr(cur.amount)
+            }, 0)
+            books[index].total = total_obj
+            //
+            books[index].moneth = month_obj
+        }
+        // Category、Type、Typess
+        const categories = await ctx.service.category.getAllCategory(userInfo.id)
+        const Expend = await ctx.service.category.getAlltype(1)
+        const Income = await ctx.service.category.getAlltype(2)
+        const typess = { Expend, Income }
+        for (let index = 0; index < Expend.length; index++) {
+            const allBill = await app.mysql.query(`select amount from bill where type_id=${Expend[index].id}`)
+            const totalamount = allBill.reduce((pre, cur) => {
+                return pre + keepTwoDecimalStr(cur.amount)
+            }, 0)
+            Expend[index].amount = totalamount
+        }
+        for (let index = 0; index < Income.length; index++) {
+            const allBill = await app.mysql.query(`select amount from bill where type_id=${Income[index].id}`)
+            const totalamount = allBill.reduce((pre, cur) => {
+                return pre + keepTwoDecimalStr(cur.amount)
+            }, 0)
+            Income[index].amount = totalamount
+        }
+        for (let index = 0; index < categories.length; index++) {
+            // 查每个category对应的金额
+            // 根据类别，写入expend or income
+            const allBill = await app.mysql.query(`select amount from bill where category_id=${categories[index].id}`)
+            const totalamount = allBill.reduce((pre, cur) => {
+                return pre + keepTwoDecimalStr(cur.amount)
+            }, 0)
+            categories[index].amount = totalamount
+        }
+        for (const key in typess) {
+            typess[key].forEach(item => {
+                categories.forEach(category => {
+                    if (category.type_id == item.id) {
+                        if (item.list == undefined) {
+                            item.list = []
+                            item.list.push(category)
+                        }
+                        else {
+                            item.list.push(category)
+                        }
+                    }
+                })
+            })
+        }
         // 
         const plan = await app.mysql.query(`select * from plan where user_id=${userInfo.id}`)
         if (books) {
+            const inventory = await ctx.service.inventory.getAllInventory(userInfo.id)
             let assets = 0
             let debt = 0
             const net = account.reduce((pre, cur) => {
@@ -808,17 +880,17 @@ class UserController extends Controller {
                 msg: '登录成功',
                 data: {
                     plan,
-                    Saved_Money,
-                    all_cg,
-                    category_list: [expense_cg, income_cg],
-                    token,
-                    userInfo,
-                    books,
-                    accounts: account,
-                    // account_list: [ac1, ac2],
                     net,
                     assets,
                     debt,
+                    Saved_Money,
+                    userInfo,
+                    typess,
+                    books,
+                    inventory,
+                    categories: all_cg,
+                    account,
+                    token,
                 }
             }
         }
@@ -901,14 +973,7 @@ class UserController extends Controller {
     //                 Saved_Money,
     //                 userInfo,
     //                 typess,
-    //                 // id: userInfo.id,
-    //                 // username: userInfo.username,
-    //                 // signature: userInfo.signature || '',
-    //                 // // 👇 初始化写法
-    //                 // avatar: userInfo.avatar || defaultAvatar,
-    //                 // default_book_id: userInfo.default_book_id,
     //                 books,
-    //                 // typess: obj,
     //                 categories,
     //                 inventory,
     //                 account,
@@ -945,16 +1010,44 @@ class UserController extends Controller {
              * 转化数据 
              */
             // => book 加总金额 月金额
+            // for (let index = 0; index < booksList.length; index++) {
+            //     const allBill = await app.mysql.query(`select pay_type,date,amount from bill where book_id=${booksList[index].id}`)
+            //     // 
+            //     const total_obj = { income: 0, expend: 0, totalamount: 0 }
+            //     const month_obj = { income: 0, expend: 0, totalamount: 0 }
+            //     // 
+            //     total_obj.totalamount = allBill.reduce((pre, cur) => {
+            //         if (cur.pay_type === 1) total_obj.income += cur.amount
+            //         if (cur.pay_type === 2) total_obj.expend += cur.amount
+            //         // 
+            //         return pre + keepTwoDecimalStr(cur.amount)
+            //     }, 0)
+            //     const oneMonthAgo = dayjs().subtract(1, 'month')
+            //     // 过滤近一个月的账单
+            //     const newArr = allBill.filter(item => {
+            //         return dayjs(item.date).isBetween(oneMonthAgo, dayjs())
+            //     })
+            //     month_obj.totalamount = newArr.reduce((pre, cur) => {
+            //         if (cur.pay_type === 1) month_obj.income += cur.amount
+            //         if (cur.pay_type === 2) month_obj.expend += cur.amount
+            //         // 
+            //         return pre + keepTwoDecimalStr(cur.amount)
+            //     }, 0)
+            //     booksList[index].total = total_obj
+            //     // 
+            //     booksList[index].moneth = month_obj
+            // }
+            // newBooks(books)
             for (let index = 0; index < books.length; index++) {
                 const allBill = await app.mysql.query(`select pay_type,date,amount from bill where book_id=${books[index].id}`)
-                // 
+                //
                 const total_obj = { income: 0, expend: 0, totalamount: 0 }
                 const month_obj = { income: 0, expend: 0, totalamount: 0 }
-                // 
+                //
                 total_obj.totalamount = allBill.reduce((pre, cur) => {
                     if (cur.pay_type === 1) total_obj.income += cur.amount
                     if (cur.pay_type === 2) total_obj.expend += cur.amount
-                    // 
+                    //
                     return pre + keepTwoDecimalStr(cur.amount)
                 }, 0)
                 const oneMonthAgo = dayjs().subtract(1, 'month')
@@ -965,14 +1058,24 @@ class UserController extends Controller {
                 month_obj.totalamount = newArr.reduce((pre, cur) => {
                     if (cur.pay_type === 1) month_obj.income += cur.amount
                     if (cur.pay_type === 2) month_obj.expend += cur.amount
-                    // 
+                    //
                     return pre + keepTwoDecimalStr(cur.amount)
                 }, 0)
                 books[index].total = total_obj
-                // 
+                //
                 books[index].moneth = month_obj
             }
             // => expend income 加总金额
+            // async function newExpend(expendsList) {
+            //     for (let index = 0; index < expendsList.length; index++) {
+            //         const allBill = await app.mysql.query(`select amount from bill where type_id=${expendsList[index].id}`)
+            //         const totalamount = allBill.reduce((pre, cur) => {
+            //             return pre + keepTwoDecimalStr(cur.amount)
+            //         }, 0)
+            //         expendsList[index].amount = totalamount
+            //     }
+            // }
+            // newExpend(Expend)
             for (let index = 0; index < Expend.length; index++) {
                 const allBill = await app.mysql.query(`select amount from bill where type_id=${Expend[index].id}`)
                 const totalamount = allBill.reduce((pre, cur) => {
@@ -980,6 +1083,16 @@ class UserController extends Controller {
                 }, 0)
                 Expend[index].amount = totalamount
             }
+            // async function newIncome(incomesList) {
+            //     for (let index = 0; index < incomesList.length; index++) {
+            //         const allBill = await app.mysql.query(`select amount from bill where type_id=${incomesList[index].id}`)
+            //         const totalamount = allBill.reduce((pre, cur) => {
+            //             return pre + keepTwoDecimalStr(cur.amount)
+            //         }, 0)
+            //         incomesList[index].amount = totalamount
+            //     }
+            // }
+            // newIncome(Income)
             for (let index = 0; index < Income.length; index++) {
                 const allBill = await app.mysql.query(`select amount from bill where type_id=${Income[index].id}`)
                 const totalamount = allBill.reduce((pre, cur) => {
@@ -988,9 +1101,22 @@ class UserController extends Controller {
                 Income[index].amount = totalamount
             }
             // => categories 加总金额
+            // async function newCategories(categoriesList) {
+            //     for (let index = 0; index < categoriesList.length; index++) {
+            //         // 查每个category对应的金额
+            //         // 根据类别，写入expend or income 
+            //         const allBill = await app.mysql.query(`select amount from bill where category_id=${categoriesList[index].id}`)
+            //         const totalamount = allBill.reduce((pre, cur) => {
+            //             return pre + keepTwoDecimalStr(cur.amount)
+            //         }, 0)
+            //         categoriesList[index].amount = totalamount
+            //     }
+            // }
+            // newCategories(categories)
+
             for (let index = 0; index < categories.length; index++) {
                 // 查每个category对应的金额
-                // 根据类别，写入expend or income 
+                // 根据类别，写入expend or income
                 const allBill = await app.mysql.query(`select amount from bill where category_id=${categories[index].id}`)
                 const totalamount = allBill.reduce((pre, cur) => {
                     return pre + keepTwoDecimalStr(cur.amount)
@@ -998,6 +1124,24 @@ class UserController extends Controller {
                 categories[index].amount = totalamount
             }
             // => types 构造合成对象
+            // async function newType(typeslist) {
+            //     for (const key in typeslist) {
+            //         typeslist[key].forEach(item => {
+            //             categories.forEach(category => {
+            //                 if (category.type_id == item.id) {
+            //                     if (item.list == undefined) {
+            //                         item.list = []
+            //                         item.list.push(category)
+            //                     }
+            //                     else {
+            //                         item.list.push(category)
+            //                     }
+            //                 }
+            //             })
+            //         })
+            //     }
+            // }
+            // newType(typess)
             for (const key in typess) {
                 typess[key].forEach(item => {
                     categories.forEach(category => {
@@ -1014,6 +1158,8 @@ class UserController extends Controller {
                 })
             }
             // 计算SavedMoney
+
+
             const Saved_Money = plan.reduce((pre, cur) => {
                 return pre += cur.saved_money
             }, 0)
@@ -1034,14 +1180,7 @@ class UserController extends Controller {
                     Saved_Money,
                     userInfo,
                     typess,
-                    // id: userInfo.id,
-                    // username: userInfo.username,
-                    // signature: userInfo.signature || '',
-                    // // 👇 初始化写法
-                    // avatar: userInfo.avatar || defaultAvatar,
-                    // default_book_id: userInfo.default_book_id,
                     books,
-                    // typess: obj,
                     categories,
                     inventory,
                     account,

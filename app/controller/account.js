@@ -116,14 +116,23 @@ class BookController extends Controller {
                 id,
                 name,
                 amount,
-
                 user_id,
             })
-            ctx.body = {
-                code: 200,
-                msg: '修改成功',
-                data: result
+            if (result) {
+                ctx.body = {
+                    code: 200,
+                    msg: '修改成功',
+                    data: result
+                }
             }
+            else {
+                ctx.body = {
+                    code: 500,
+                    msg: '修改失败',
+                    data: null
+                }
+            }
+
         } catch (error) {
             ctx.body = {
                 code: 500,
