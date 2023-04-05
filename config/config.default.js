@@ -33,6 +33,25 @@ module.exports = appInfo => {
     app: true,
     agent: false,
   };
+  config.io = {
+    // init: {},
+    namespace: {
+      // '/': {
+      //   connectionMiddleware: ['connection'],
+      //   packetMiddleware: ['packet'],
+      // },
+      '/': {
+        connectionMiddleware: ['auth'],
+        packetMiddleware: [],
+
+        // 
+        redis: {
+          host: '127.0.0.1',
+          port: 6379,
+        },
+      },
+    }
+  };
   config.jwt = {
     secret: 'Link',
   }

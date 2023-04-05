@@ -647,12 +647,16 @@ class UserController extends Controller {
         const all_cg = await app.mysql.query(all_cg_ql)
         let expense_cg = []
         let income_cg = []
-        all_cg.forEach(async (item) => {
+        // 
+        for (let index = 0; index < all_cg.length; index++) {
+            const item = all_cg[index];
             const cg_type = await app.mysql.query(`select type from type where id=${item.type_id}`)
+            if (cg_type.length === 0) continue
             if (cg_type[0].type == 1) expense_cg.push(item)
             else if (cg_type[0].type == 2) income_cg.push(item)
-        })
-        // 
+        }
+
+
         const ql = `select * from account where user_id=${userInfo.id}`
         const account = await app.mysql.query(ql)
         const books = await ctx.service.book.getAllbook(userInfo.id)
@@ -676,12 +680,11 @@ class UserController extends Controller {
                     plan,
                     Saved_Money,
                     all_cg,
-                    category_list: [expense_cg, income_cg],
                     token,
                     userInfo,
                     books,
+                    category_list: [expense_cg, income_cg],
                     accounts: account,
-                    // account_list: [ac1, ac2],
                     net,
                     assets,
                     debt,
@@ -746,6 +749,15 @@ class UserController extends Controller {
                     })
                 })
             }
+            for (let index = 0; index < categories.length; index++) {
+                // 查每个category对应的金额
+                // 根据类别，写入expend or income 
+                const allBill = await app.mysql.query(`select amount from bill where category_id=${categories[index].id}`)
+                const totalamount = allBill.reduce((pre, cur) => {
+                    return pre + cur.amount
+                }, 0)
+                categories[index].amount = totalamount
+            }
             // 计算SavedMoney
             const Saved_Money = plan.reduce((pre, cur) => {
                 return pre += cur.saved_money
@@ -757,24 +769,128 @@ class UserController extends Controller {
                 cur.amount > 0 ? assets += cur.amount : debt -= cur.amount
                 return pre += cur.amount
             }, 0)
+            /**
+             * Pre:完善Books
+             * 先遍历multiuserbook 找participants有该userId的book_id
+             * 再查找这个book
+             * 构造出sideBooks 
+             * completelyBooks = concat(books,sideBooks)
+             * 
+             * 
+             * completelyBooks:
+             * 1.遍历books 
+             * 2.对每个多用户账本进行查询
+             * 3.对账本内所有用户进行查询
+             * 
+             * 4.将多用户账本的信息直接添加进对象的属性。
+             */
             // 返回数据库中的信息
+
+            /**Pre */
+            let completelyBooks = []
+            let _sideBooks = []
+            let _ParticipantInfoList = []
+            let _CurMultiBook = {}
+            let _MultiInfo = {}
+            let _el = {}
+            let _completelyBooks = []
+            const sideBook_IdList = await app.mysql.query(`select book_id from multiuserbook where participants like '%,${userInfo.id}%' `)
+
+            async function getsideBooks(IdList) {
+                const sideBooks = []
+
+                for (let index = 0; index < IdList.length; index++) {
+                    const bookid = IdList[index].book_id;
+                    const [book] = await app.mysql.query(`select * from book where id=${bookid}`)
+                    sideBooks.push(book)
+                }
+
+                return sideBooks
+            }
+            await getsideBooks(sideBook_IdList).then(async sideBooks => {
+                _sideBooks = sideBooks
+                /**Concat */
+                completelyBooks = books.concat(sideBooks)
+                _completelyBooks = books.concat(sideBooks)
+
+                /**completelyBooks: */
+                async function structionBooks(boooks) {
+
+                    for (let index = 0; index < boooks.length; index++) {
+                        const element = boooks[index];
+                        if (element.multiuser === 0) continue  // 排除单人账本
+                        // 每一个多用户账本👇
+
+                        const [CurMultiBook] = await app.mysql.query(`select * from multiuserbook where book_id=${element.id}`)
+
+                        let participantList = []
+                        // 参与者数组 -- 对只有一个参与者和多个的不同处理
+                        if (!CurMultiBook.participants.includes(',')) { participantList.push(CurMultiBook.participants) }
+                        else {
+                            participantList = CurMultiBook.participants.split(',')
+                        }
+
+
+                        // 参与者信息数组
+                        const ParticipantInfoList = []
+                        for (let index = 0; index < participantList.length; index++) {
+                            const participant = participantList[index];
+                            const [user] = await app.mysql.query(`select * from user where id=${participant}`)
+                            user && ParticipantInfoList.push(user)
+                        }
+                        _ParticipantInfoList = ParticipantInfoList
+                        // 
+                        element.MultiInfo = {
+                            MultiBookInfo: CurMultiBook, //账本信息（多用户）
+                            ParticipantInfoList: ParticipantInfoList //参与者信息数组
+                        }
+                        _MultiInfo = element.MultiInfo
+                        _CurMultiBook = CurMultiBook
+                        _el = element
+                    }
+                }
+                await structionBooks(completelyBooks)
+            })
+
+            // const filterMultiBooks = books.filter(item => {
+            //     return item.multiuser === 1
+            // })
+            // let _multiBooks = {}
+            // if (filterMultiBooks && filterMultiBooks.length !== 0) {
+            //     for (let index = 0; index < filterMultiBooks.length; index++) {
+            //         const book = filterMultiBooks[index];
+            //         const multibook = await app.mysql.query(`select * from multiuserbook where book_id=${book.id}`)
+            //         if (!multibook) continue
+            //         const participants = multibook[0]?.participants
+            //         if (!participants) continue
+            //         const arr_participants = participants.split(',')
+            //         const userList = []
+            //         for (let index = 0; index < arr_participants.length; index++) {
+            //             const participant = arr_participants[index];
+            //             const user = await app.mysql.query(`select * from user where id=${participant}`)
+            //             userList.push(user[0])
+            //         }
+            //         _multiBooks[book.id] = { book, participants, userList }
+            //     }
+            // }
             ctx.body = {
                 code: 200,
                 msg: 'getUserInfo成功',
                 data: {
+                    id: userInfo.id,
+                    completelyBooks,
+                    _completelyBooks,
+                    sideBook_IdList,
+                    _el,
+                    _MultiInfo,
+                    _sideBooks,
                     plan,
                     net,
                     Saved_Money,
                     userInfo,
                     typess,
-                    // id: userInfo.id,
-                    // username: userInfo.username,
-                    // signature: userInfo.signature || '',
-                    // // 👇 初始化写法
-                    // avatar: userInfo.avatar || defaultAvatar,
-                    // default_book_id: userInfo.default_book_id,
-                    books,
-                    // typess: obj,
+                    // filterMultiBooks,
+                    // _multiBooks,
                     categories,
                     inventory,
                     account,

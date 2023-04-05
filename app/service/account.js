@@ -30,6 +30,19 @@ class AccountService extends Service {
             return null;
         }
     }
+    async update(params) {
+        const { ctx, app } = this;
+        try {
+            let result = await app.mysql.update(
+                'account',
+                { ...params },
+                { id: params.id, user_id: params.user_id });
+            return result;
+        } catch (error) {
+            console.log(error);
+            return null;
+        }
+    }
     async getAllAccount(user_id) {
         const { ctx, app } = this
         try {

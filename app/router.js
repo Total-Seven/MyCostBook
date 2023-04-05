@@ -3,17 +3,20 @@
  * @param {Egg.Application} app - egg application
  */
 module.exports = app => {
-  const { router, controller, middleware } = app;
-  // router.get('/', controller.home.index);
-  // router.post('/add', controller.home.add);
-  router.get('/user', controller.home.user);
-  // router.post('/add_user', controller.home.adduser)
-  // router.post('/edit_user', controller.home.edituser)
-  // router.post('/delete_user', controller.home.delete_user)
-  //
-  //
+  const { router, controller, middleware, io } = app;
   // 鉴权
   const _jwt = middleware.jwtErr(app.config.jwt.secret)
+
+
+  // io.of('/').route('index', io.controller.nsp.index);
+  // io.of('/').route('exchange', io.controller.nsp.exchange);
+  io.of('/').route('chat', io.controller.chat.index);
+  io.route('chat', io.controller.chat.index);
+  io.route('book', io.controller.book.index);
+  io.route('receive', io.controller.receive.index);
+  io.route('bill', io.controller.bill.index);
+
+
   // 用户
   router.post('/api/user/register', controller.user.register)
   router.post('/api/user/login', controller.user.login)
@@ -24,6 +27,7 @@ module.exports = app => {
 
   // 账单
   router.post('/api/bill/add', _jwt, controller.bill.add)
+  router.post('/api/bill/transform', _jwt, controller.bill.transform)
   router.get('/api/bill/list', _jwt, controller.bill.list); // 获取账单列表
   router.get('/api/bill/select_category_list', _jwt, controller.bill.select_category_list); // 获取账单列表
   router.get('/api/bill/select_list', _jwt, controller.bill.select_list)
@@ -39,6 +43,7 @@ module.exports = app => {
   // Category
   router.post('/api/category/add', _jwt, controller.category.AddCategory); // 添加Category
   router.post('/api/category/delete', _jwt, controller.category.delete); // 添加Category
+  router.post('/api/category/update', _jwt, controller.category.update); // 添加Category
   // Budget 
   router.post('/api/budget/add', _jwt, controller.budget.setBudget); // 添加Budget
   router.get('/api/budget/getUserBudget', _jwt, controller.budget.getUserBudget); // 添加Budget
@@ -57,21 +62,9 @@ module.exports = app => {
   // Account  
   router.post('/api/account/add', _jwt, controller.account.add); // 添加账户
   router.post('/api/account/delete', _jwt, controller.account.delete); // 添加账户
+  router.post('/api/account/update', _jwt, controller.account.update); // 修改账户
   router.get('/api/account/getAllAccount', _jwt, controller.account.getAllAccount); // 获取所有账户信息
   // Chart  getYear_LinePieTop
-  // get Expend Year、Month、Week、Day     get_Exp_Inc_Trf
-  // router.get('/api/chart/getYear_LinePieTop', _jwt, controller.chart.getYear_LinePieTop); // 获取所有账户信息
-  // router.get('/api/chart/getDay_LinePieTop', _jwt, controller.chart.getDay_LinePieTop); // 获取所有账户信息
-  // router.get('/api/chart/getMonth_LinePieTop', _jwt, controller.chart.getMonth_LinePieTop); // 获取所有账户信息
-  // router.get('/api/chart/getWeek_LinePieTop', _jwt, controller.chart.getWeek_LinePieTop); // 获取所有账户信息
-  router.get('/api/chart/get_Exp_data', _jwt, controller.chart.get_Exp_data); // 获取所有账户信息
   router.get('/api/chart/get_Exp_Inc_Trf', _jwt, controller.chart.get_Exp_Inc_Trf); // 获取所有账户信息
 
-  // get Income Year、Month、Week、Day
-  // get Transfer Year、Month、Week、Day
 };
-// POST请求 考虑到：数据安全及大小
-// 表面上的区别，内在本质是一样的，基于TCP协议，从理论上讲他们没差
-
-// POST请求 浏览器无法手动发起，只能通过浏览器地址栏发起GET请求
-// Postman

@@ -118,6 +118,82 @@ class BillController extends Controller {
             }
         }
     }
+    async transform() {
+        const { ctx, app } = this
+        // // 获取请求头中携带的参数
+        const { out_account_id, in_account_id, amount, date = dayjs().format('YYYY-MM-DD HH:mm:ss'), remark = '' } = ctx.request.body
+        //
+        if (!out_account_id || !in_account_id || !amount || !date) {
+            ctx.body = {
+                code: 400,
+                msg: '账单参数错误',
+                data: null,
+            }
+        }
+        try {
+            let user_id
+            const token = ctx.request.header.authorization
+            const decode = await app.jwt.verify(token, app.config.jwt.secret)
+            if (!decode) return
+            else {
+                user_id = decode.id
+                //
+                const result = await ctx.service.bill.add({
+                    user_id,
+                    pay_type: 3,
+                    account_id: in_account_id,
+                    amount,
+                    date,  //存储的时候不用加八个小时
+                    remark,
+
+                    book_id: 0,
+                    book_name: '',
+                    book_type: 0,
+                    type_id: 0,
+                    type_name: '',
+                    category_id: 0,
+                    category_name: '',
+                })
+                if (result) {
+                    // ① 进行对账户的扣款
+                    const _ql = `update account set amount=amount-${amount} where id = ${out_account_id}`
+                    const res1 = await app.mysql.query(_ql)
+                    const ql_ = `update account set amount=amount+${amount} where id = ${in_account_id}`
+                    const res2 = await app.mysql.query(ql_)
+                    if (res1 && res2) {
+                        ctx.body = {
+                            code: 200,
+                            msg: '添加Bill成功',
+                            data: {
+                                id: result.insertId,
+                                user_id,
+                                pay_type: 3,
+                                in_account_id,
+                                amount,
+                                date,  //存储的时候不用加八个小时
+                                remark,
+                            }
+                        }
+                    }
+                    else {
+                        ctx.body = {
+                            code: 500,
+                            msg: 'transfrom--记账成功，转账失败',
+                            data: null
+                        }
+                    }
+                }
+            }
+        } catch (error) {
+            console.log(error);
+            ctx.body = {
+                code: 500,
+                msg: 'transfrom--系统错误',
+                data: null
+            }
+        }
+
+    }
     async list() {
         const { ctx, app } = this;
         // 获取，日期 date，分页数据，类型 type_id，这些都是我们在前端传给后端的数据
@@ -130,8 +206,24 @@ class BillController extends Controller {
             const decode = await app.jwt.verify(token, app.config.jwt.secret);
             if (!decode) return
             user_id = decode.id
+            const [user] = await app.mysql.query(`select * from user where id=${user_id}`)
+            // 💩 判断Book是否是多人账本，并且判断该Id是否是创建者。
+            const [oldbill] = await app.mysql.query(`select * from book where id=${book_id}`)
+            const isMulti = oldbill.multiuser === 1
+            if (isMulti) {
+                const [multiBook] = await app.mysql.query(`select * from multiuserbook where book_id=${book_id}`)
+                const isCreator = multiBook.creator === user_id
+                /**验证是否是参与者 */
+                console.log('判断用户ID,在不在当前多人账本的participants里')
+                /**验证是否是参与者 */
+                const isParticipant = !isCreator
+                user_id = isParticipant && multiBook.creator_id
+            }
+
             // 拿到当前用户的账单列表
-            const list = await ctx.service.bill.list(user_id, book_id)
+            let list = []
+            if (!isMulti) list = await ctx.service.bill.list(user_id, book_id)
+            else list = await ctx.service.bill.list(null, book_id)
             /**
               * 获取账本信息 ： net income expense 
               */
@@ -268,6 +360,8 @@ class BillController extends Controller {
                 code: 200,
                 msg: '请求成功',
                 data: {
+                    user_id,
+                    isMulti,
                     username: decode.username,
                     account,
                     // categories,

@@ -338,7 +338,7 @@ class InventoryController extends Controller {
                     el.goods_list = []
                     goods.forEach(item => {
                         if (item.list_id == el.id) {
-                            item.checked = false
+                            item.checked = true
                             el.goods_list.push(item)
                         }
                     })
