@@ -243,6 +243,13 @@ function generative_initial_categories(user_id) {
             avatar: '',
             caution: 0,
         },
+        {
+            name: '日用品',
+            type_id: 5,
+            user_id,
+            avatar: '',
+            caution: 0,
+        },
         // 6
         {
             name: '药',
@@ -533,28 +540,28 @@ function generative_initial_categories(user_id) {
         // 20
         {
             name: '视频VIP',
-            type_id: 6,
+            type_id: 20,
             user_id,
             avatar: '',
             caution: 0,
         },
         {
             name: '书籍VIP',
-            type_id: 6,
+            type_id: 20,
             user_id,
             avatar: '',
             caution: 0,
         },
         {
             name: '购物VIP',
-            type_id: 6,
+            type_id: 20,
             user_id,
             avatar: '',
             caution: 0,
         },
         {
             name: '社交VIP',
-            type_id: 6,
+            type_id: 20,
             user_id,
             avatar: '',
             caution: 0,
@@ -562,14 +569,14 @@ function generative_initial_categories(user_id) {
         // 21
         {
             name: '话费',
-            type_id: 6,
+            type_id: 21,
             user_id,
             avatar: '',
             caution: 0,
         },
         {
             name: '宽带',
-            type_id: 6,
+            type_id: 21,
             user_id,
             avatar: '',
             caution: 0,
@@ -643,12 +650,14 @@ class UserController extends Controller {
                     book_type: 0,
                     user_id: result.insertId,
                     date: this.app.mysql.literals.now,
+                    multiuser: 0,
                 }
                 const inventory_book = {
                     name: '购物清单',
                     book_type: 10,
                     user_id: result.insertId,
                     date: this.app.mysql.literals.now,
+                    multiuser: 0,
                 }
                 const rows = [default_book, inventory_book]
                 // 自动添加账本
@@ -781,12 +790,16 @@ class UserController extends Controller {
         const all_cg = await app.mysql.query(all_cg_ql)
         let expense_cg = []
         let income_cg = []
-        all_cg.forEach(async (item) => {
+        // 
+        for (let index = 0; index < all_cg.length; index++) {
+            const item = all_cg[index];
             const cg_type = await app.mysql.query(`select type from type where id=${item.type_id}`)
+            if (cg_type.length === 0) continue
             if (cg_type[0].type == 1) expense_cg.push(item)
             else if (cg_type[0].type == 2) income_cg.push(item)
-        })
-        // 
+        }
+
+
         const ql = `select * from account where user_id=${userInfo.id}`
         const account = await app.mysql.query(ql)
         // Books
@@ -880,17 +893,24 @@ class UserController extends Controller {
                 msg: '登录成功',
                 data: {
                     plan,
+                    Saved_Money,
+                    all_cg,
+                    token,
+                    userInfo,
+                    books,
+                    category_list: [expense_cg, income_cg],
+                    accounts: account,
                     net,
                     assets,
                     debt,
-                    Saved_Money,
-                    userInfo,
-                    typess,
-                    books,
-                    inventory,
-                    categories: all_cg,
-                    account,
-                    token,
+                    // Saved_Money,
+                    // userInfo,
+                    // typess,
+                    // books,
+                    // inventory,
+                    // categories: all_cg,
+                    // account,
+                    // token,
                 }
             }
         }
@@ -995,7 +1015,9 @@ class UserController extends Controller {
         const token = ctx.request.header.authorization
         const decode = app.jwt.verify(token, app.config.jwt.secret)
         if (!decode) return
-        try { // 查找数据库
+
+        try {
+
             const userInfo = await ctx.service.user.getUserByName(decode.username)
             const books = await ctx.service.book.getAllbook(userInfo.id)
             const categories = await ctx.service.category.getAllCategory(userInfo.id)
@@ -1006,196 +1028,263 @@ class UserController extends Controller {
             const plan = await app.mysql.query(`select * from plan where user_id=${userInfo.id}`)
             const typess = { Expend, Income }
 
-            /**
-             * 转化数据 
-             */
-            // => book 加总金额 月金额
-            // for (let index = 0; index < booksList.length; index++) {
-            //     const allBill = await app.mysql.query(`select pay_type,date,amount from bill where book_id=${booksList[index].id}`)
-            //     // 
-            //     const total_obj = { income: 0, expend: 0, totalamount: 0 }
-            //     const month_obj = { income: 0, expend: 0, totalamount: 0 }
-            //     // 
-            //     total_obj.totalamount = allBill.reduce((pre, cur) => {
-            //         if (cur.pay_type === 1) total_obj.income += cur.amount
-            //         if (cur.pay_type === 2) total_obj.expend += cur.amount
-            //         // 
-            //         return pre + keepTwoDecimalStr(cur.amount)
-            //     }, 0)
-            //     const oneMonthAgo = dayjs().subtract(1, 'month')
-            //     // 过滤近一个月的账单
-            //     const newArr = allBill.filter(item => {
-            //         return dayjs(item.date).isBetween(oneMonthAgo, dayjs())
-            //     })
-            //     month_obj.totalamount = newArr.reduce((pre, cur) => {
-            //         if (cur.pay_type === 1) month_obj.income += cur.amount
-            //         if (cur.pay_type === 2) month_obj.expend += cur.amount
-            //         // 
-            //         return pre + keepTwoDecimalStr(cur.amount)
-            //     }, 0)
-            //     booksList[index].total = total_obj
-            //     // 
-            //     booksList[index].moneth = month_obj
-            // }
-            // newBooks(books)
-            for (let index = 0; index < books.length; index++) {
-                const allBill = await app.mysql.query(`select pay_type,date,amount from bill where book_id=${books[index].id}`)
-                //
-                const total_obj = { income: 0, expend: 0, totalamount: 0 }
-                const month_obj = { income: 0, expend: 0, totalamount: 0 }
-                //
-                total_obj.totalamount = allBill.reduce((pre, cur) => {
-                    if (cur.pay_type === 1) total_obj.income += cur.amount
-                    if (cur.pay_type === 2) total_obj.expend += cur.amount
-                    //
-                    return pre + keepTwoDecimalStr(cur.amount)
-                }, 0)
-                const oneMonthAgo = dayjs().subtract(1, 'month')
-                // 过滤近一个月的账单
-                const newArr = allBill.filter(item => {
-                    return dayjs(item.date).isBetween(oneMonthAgo, dayjs())
-                })
-                month_obj.totalamount = newArr.reduce((pre, cur) => {
-                    if (cur.pay_type === 1) month_obj.income += cur.amount
-                    if (cur.pay_type === 2) month_obj.expend += cur.amount
-                    //
-                    return pre + keepTwoDecimalStr(cur.amount)
-                }, 0)
-                books[index].total = total_obj
-                //
-                books[index].moneth = month_obj
+            const _books = [...books]
+
+
+
+            // => expend  加总金额
+            async function newExpend(expendsList) {
+                const length = expendsList.length
+
+                if (length === 0) return false
+
+                for (let index = 0; index < length; index++) {
+                    const expendType = expendsList[index]
+
+                    const allBill = await app.mysql.query(`select amount from bill where type_id=${expendType.id} and user_id=${userInfo.id}`)
+
+                    expendType.amount = allBill.reduce((pre, cur) => {
+                        return pre + keepTwoDecimalStr(cur.amount)
+                    }, 0)
+                }
             }
-            // => expend income 加总金额
-            // async function newExpend(expendsList) {
-            //     for (let index = 0; index < expendsList.length; index++) {
-            //         const allBill = await app.mysql.query(`select amount from bill where type_id=${expendsList[index].id}`)
-            //         const totalamount = allBill.reduce((pre, cur) => {
-            //             return pre + keepTwoDecimalStr(cur.amount)
-            //         }, 0)
-            //         expendsList[index].amount = totalamount
-            //     }
-            // }
-            // newExpend(Expend)
-            for (let index = 0; index < Expend.length; index++) {
-                const allBill = await app.mysql.query(`select amount from bill where type_id=${Expend[index].id}`)
-                const totalamount = allBill.reduce((pre, cur) => {
-                    return pre + keepTwoDecimalStr(cur.amount)
-                }, 0)
-                Expend[index].amount = totalamount
-            }
-            // async function newIncome(incomesList) {
-            //     for (let index = 0; index < incomesList.length; index++) {
-            //         const allBill = await app.mysql.query(`select amount from bill where type_id=${incomesList[index].id}`)
-            //         const totalamount = allBill.reduce((pre, cur) => {
-            //             return pre + keepTwoDecimalStr(cur.amount)
-            //         }, 0)
-            //         incomesList[index].amount = totalamount
-            //     }
-            // }
-            // newIncome(Income)
-            for (let index = 0; index < Income.length; index++) {
-                const allBill = await app.mysql.query(`select amount from bill where type_id=${Income[index].id}`)
-                const totalamount = allBill.reduce((pre, cur) => {
-                    return pre + keepTwoDecimalStr(cur.amount)
-                }, 0)
-                Income[index].amount = totalamount
+            // => income  加总金额
+            async function newIncome(incomesList) {
+                const length = incomesList.length
+
+                if (length === 0) return false
+
+                for (let index = 0; index < length; index++) {
+                    const incomeType = incomesList[index]
+
+                    const allBill = await app.mysql.query(`select amount from bill where type_id=${incomeType.id} and user_id=${userInfo.id}`)
+
+                    incomeType.amount = allBill.reduce((pre, cur) => {
+                        return pre + keepTwoDecimalStr(cur.amount)
+                    }, 0)
+                }
             }
             // => categories 加总金额
-            // async function newCategories(categoriesList) {
-            //     for (let index = 0; index < categoriesList.length; index++) {
-            //         // 查每个category对应的金额
-            //         // 根据类别，写入expend or income 
-            //         const allBill = await app.mysql.query(`select amount from bill where category_id=${categoriesList[index].id}`)
-            //         const totalamount = allBill.reduce((pre, cur) => {
-            //             return pre + keepTwoDecimalStr(cur.amount)
-            //         }, 0)
-            //         categoriesList[index].amount = totalamount
-            //     }
-            // }
-            // newCategories(categories)
+            async function newCategories(categoriesList) {
+                if (categoriesList.length === 0) return false
 
-            for (let index = 0; index < categories.length; index++) {
-                // 查每个category对应的金额
-                // 根据类别，写入expend or income
-                const allBill = await app.mysql.query(`select amount from bill where category_id=${categories[index].id}`)
-                const totalamount = allBill.reduce((pre, cur) => {
-                    return pre + keepTwoDecimalStr(cur.amount)
-                }, 0)
-                categories[index].amount = totalamount
+                for (let index = 0; index < categoriesList.length; index++) {
+                    const category = categoriesList[index]
+                    // 查每个category对应的金额
+                    // 根据类别，写入expend or income 
+                    const allBill = await app.mysql.query(`select amount from bill where category_id=${category.id}`)
+
+                    category.amount = allBill.reduce((pre, cur) => {
+                        return pre + keepTwoDecimalStr(cur.amount)
+                    }, 0)
+                }
             }
+            await newExpend(Expend)
+            await newIncome(Income)
+            await newCategories(categories)
+
+
             // => types 构造合成对象
-            // async function newType(typeslist) {
-            //     for (const key in typeslist) {
-            //         typeslist[key].forEach(item => {
-            //             categories.forEach(category => {
-            //                 if (category.type_id == item.id) {
-            //                     if (item.list == undefined) {
-            //                         item.list = []
-            //                         item.list.push(category)
-            //                     }
-            //                     else {
-            //                         item.list.push(category)
-            //                     }
-            //                 }
-            //             })
-            //         })
-            //     }
-            // }
-            // newType(typess)
-            for (const key in typess) {
-                typess[key].forEach(item => {
-                    categories.forEach(category => {
-                        if (category.type_id == item.id) {
-                            if (item.list == undefined) {
-                                item.list = []
-                                item.list.push(category)
+            function newType(typeslist) {
+                for (const key in typeslist) {
+                    typeslist[key].forEach(item => {
+                        categories.forEach(category => {
+                            if (category.type_id == item.id) {
+                                if (item.list == undefined) {
+                                    item.list = []
+                                    item.list.push(category)
+                                }
+                                else {
+                                    item.list.push(category)
+                                }
                             }
-                            else {
-                                item.list.push(category)
-                            }
-                        }
+                        })
                     })
-                })
+                }
             }
+            newType(typess)
+
+
             // 计算SavedMoney
-
-
             const Saved_Money = plan.reduce((pre, cur) => {
                 return pre += cur.saved_money
             }, 0)
-            // 净余额、收入、支出
+            // // 净余额、收入、支出
             let assets = 0
             let debt = 0
             const net = account.reduce((pre, cur) => {
                 cur.amount > 0 ? assets += cur.amount : debt -= cur.amount
                 return pre += cur.amount
             }, 0)
+
+
+            // /**
+            //  * Pre:完善Books
+            //  * 先遍历multiuserbook 找participants有该userId的book_id
+            //  * 再查找这个book
+            //  * 构造出sideBooks
+            //  * completelyBooks = concat(books,sideBooks)
+            //  *
+            //  *
+            //  * completelyBooks:
+            //  * 1.遍历books
+            //  * 2.对每个多用户账本进行查询
+            //  * 3.对账本内所有用户进行查询
+            //  *
+            //  * 4.将多用户账本的信息直接添加进对象的属性。
+            //  */
+
+
             // 返回数据库中的信息
+            // // try {
+            /**Pre */
+            let completelyBooks = []
+            let _sideBooks = []
+            let _ParticipantInfoList = []
+            let _CurMultiBook = {}
+            let _MultiInfo = {}
+            let _el = {}
+            let _completelyBooks = []
+            const sideBook_IdList = await app.mysql.query(`select * from multiuserbook where participants like '%,${userInfo.id}%' `)
+            async function getsideBooks(IdList) {
+                const sideBooks = []
+
+                for (let index = 0; index < IdList.length; index++) {
+                    const bookid = IdList[index].book_id;
+                    const [book] = await app.mysql.query(`select * from book where id=${bookid}`)
+                    book && sideBooks.push(book)
+                }
+
+                return sideBooks
+            }
+            const sideBooks = await getsideBooks(sideBook_IdList)
+            completelyBooks = books.concat(sideBooks)
+            // => book 加总金额 月金额   
+            async function figureBooksAmount(booksList) {
+
+                // constant 
+                const oneMonthAgo = dayjs().subtract(1, 'month')
+                class amountObj {
+                    income = 0;
+                    expend = 0;
+                    totalamount = 0;
+                }
+
+                // utils
+                function filterBill(list, startTime, endTime = dayjs()) {
+                    return list.filter(item => {
+                        return dayjs(item.date).isBetween(startTime, endTime)
+                    })
+                }
+                function figureAmount(list) {
+                    if (list.length === 0) return false
+                    this.totalamount = list.reduce((pre, cur) => {
+                        const Amount = keepTwoDecimalStr(cur.amount)
+                        const Type = cur.pay_type
+                        if (Type === 1) this.income += Amount
+                        if (Type === 2) this.expend += Amount
+                        return pre + keepTwoDecimalStr(Amount)
+                    }, 0)
+                    return true
+                    // 精度丢失
+                }
+
+                for (let index = 0; index < booksList.length; index++) {
+
+                    const Book = booksList[index]
+                    const total_obj = new amountObj()
+                    const month_obj = new amountObj()
+
+                    const allBill = await app.mysql.query(`select pay_type,date,amount from bill where book_id=${Book.id}`)
+                    const newList = filterBill(allBill, oneMonthAgo)  // 过滤近一个月的账单
+
+                    const resultTotal = allBill.length !== 0 && figureAmount.call(total_obj, allBill)
+                    const resultMonth = newList.length !== 0 && figureAmount.call(month_obj, newList)
+
+                    Book.total = resultTotal && total_obj
+                    Book.moneth = resultMonth && month_obj
+                }
+            }
+            await figureBooksAmount(books)
+            // // debug
+            // _sideBooks = sideBooks
+            // _completelyBooks = books.concat(sideBooks)
+
+            /**completelyBooks: */
+            async function structionBooks(boooks) {
+
+                for (let index = 0; index < boooks.length; index++) {
+                    const element = boooks[index];
+                    if (element.multiuser === 0) continue  // 排除单人账本
+                    // 每一个多用户账本👇
+
+                    const [CurMultiBook] = await app.mysql.query(`select * from multiuserbook where book_id=${element.id}`)
+
+                    let participantList = []
+                    // 参与者数组 -- 对只有一个参与者和多个的不同处理
+                    if (!CurMultiBook.participants.includes(',')) { participantList.push(CurMultiBook.participants) }
+                    else {
+                        participantList = CurMultiBook.participants.split(',')
+                    }
+
+
+                    // 参与者信息数组
+                    const ParticipantInfoList = []
+                    for (let index = 0; index < participantList.length; index++) {
+                        const participant = participantList[index];
+                        const [user] = await app.mysql.query(`select * from user where id=${participant}`)
+                        user && ParticipantInfoList.push(user)
+                    }
+                    // debug
+                    _ParticipantInfoList = ParticipantInfoList
+                    // 
+                    element.MultiInfo = {
+                        MultiBookInfo: CurMultiBook, //账本信息（多用户）
+                        ParticipantInfoList: ParticipantInfoList //参与者信息数组
+                    }
+                    // debug
+                    _MultiInfo = element.MultiInfo
+                    _CurMultiBook = CurMultiBook
+                    _el = element
+                }
+            }
+            await structionBooks(completelyBooks)
+
             ctx.body = {
                 code: 200,
-                msg: 'getUserInfo成功',
+                msg: 'Fuck!',
                 data: {
-                    plan,
-                    net,
-                    Saved_Money,
+                    inconFaultAvatar,
+                    id: userInfo.id,
                     userInfo,
-                    typess,
                     books,
+                    _books,
                     categories,
                     inventory,
                     account,
-                    inconFaultAvatar,
+                    plan,
+                    typess,
+
+                    Saved_Money,
+                    net,
+
+                    sideBooks,
+                    completelyBooks,
+
+                    // _completelyBooks,
+                    // sideBook_IdList,
+                    // _el,
+                    // _MultiInfo,
+                    // _sideBooks,
                 }
             }
         } catch (error) {
-            console.log(error);
             ctx.body = {
                 code: 500,
-                msg: '系统错误',
+                msg: error,
                 data: null
             }
         }
-
     }
     async editUserInfo() {
         const { ctx, app } = this
@@ -1234,6 +1323,8 @@ class UserController extends Controller {
             console.error(error)
         }
     }
+
+
     /** 
      * 账单接口 （CRUD、复杂数据的处理、egg-mysql）
     */

@@ -1,7 +1,7 @@
 'use strict';
 
 const Controller = require('egg').Controller;
-const room = 'default_room';
+const room = 'book';
 
 class ChatController extends Controller {
     async index() {
@@ -9,13 +9,13 @@ class ChatController extends Controller {
         const id = socket.id;
         const nsp = app.io.of('/');
         const message = this.ctx.args[0] || {};
-        console.log('#chat.js : ', message);
+        console.log('#chat.js : ', this.ctx.args);
 
         // 根据id给指定连接发送消息
         nsp.sockets[id].emit('res', "hello ....");
         // 指定房间连接信息列表
         nsp.adapter.clients([room], (err, clients) => {
-            console.table(JSON.stringify(clients));
+            // console.table(JSON.stringify(clients));
         });
         //  给指定房间的每个人发送消息
         nsp.to(room).emit('online', this.ctx.socket.id + "上线了");
@@ -27,7 +27,7 @@ class ChatController extends Controller {
             user: socket.id,
             message,
         }
-        nsp.to(room).emit('res', resData);
+        // nsp.to(room).emit('res', resData);
         // 断开连接
         // this.ctx.socket.disconnect();
     }

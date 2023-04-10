@@ -3,41 +3,24 @@ const defaultRoom = "default_room";
 module.exports = () => {
     return async (ctx, next) => {
         const { app, socket } = ctx;
-
-        const id = socket.id;
-        const query = ctx.socket.handshake.query
-        const { room, userId } = query
         const nsp = app.io.of('/');
-        // console.log('auth', `room:${query}`, `userId:${query}`);
 
-        if (room !== 'demo') {
-            // nsp.adapter.remoteDisconnect(id, true, (err) => {
-            //     console.log(err);
-            // });
-
-            // socket.emit(id, '你被踢了');
-            // ctx.socket.disconnect();
-
-            // console.log('#tick:', nsp.adapter.remoteDisconnect);
+        const { id, handshake } = socket;
+        const { room, bookId, userId } = handshake.query
+        // 加入房间 global or bookId
+        const _room = room == 'global' ? 'global' : `${bookId}`
+        socket.join(_room);
+        // nsp.sockets[id].emit('res', `Hi! You've been entered the ${room} room `);
+        // 通过
+        socket.emit('middle-auth', `Welcome  You've been entered the ${_room} room `);
+        // 给对应房间的每个人发送消息
+        if (_room == 'global') {
+            nsp.to(_room).emit('online', `有个傻瓜🤓上线了,扁他!`);
+        }
+        else {
+            nsp.to(_room).emit('online', `有个帅哥:${userId}进入房间了,扁他!`);
         }
 
-        /**t
-         * 鉴权
-         * 1. 登录页 or 记账页 
-         * 
-         * 登录页：
-         * ** 消息队列中有user_id
-         * 
-         * 记账页：
-         * ** 同一账本的用户们分类
-         */
-        socket.join(defaultRoom);  // 加入房间
-
-        socket.emit('middle-res', `auth success,you have been join in ${defaultRoom}`);  // 通过
-
-
         await next();  // 放行
-
-        // console.log('断开连接');
     }
 };

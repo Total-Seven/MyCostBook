@@ -131,8 +131,8 @@ class PlanController extends Controller {
                     code: 200,
                     msg: '添加Plan成功',
                     data: {
+                        id: result.insertId,
                         detailArr,
-                        plan_id: result.insertId,
                         name,
                         period,
                         start_date,

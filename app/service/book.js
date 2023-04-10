@@ -43,7 +43,7 @@ class BookService extends Service {
     }
     async getAllbook(id) {
         const { ctx, app } = this
-        const QUERY_STR = 'id, name,book_type';
+        const QUERY_STR = '*';
         let sql = `select ${QUERY_STR} from book where user_id = ${id}`;
         try {
             const result = app.mysql.query(sql)

@@ -4,11 +4,19 @@
  */
 module.exports = app => {
   const { router, controller, middleware, io } = app;
-  //
-  io.of('/').route('chat', io.controller.chat.index);
-  io.route('chat', io.controller.chat.index);
   // 鉴权
   const _jwt = middleware.jwtErr(app.config.jwt.secret)
+
+
+  // io.of('/').route('index', io.controller.nsp.index);
+  // io.of('/').route('exchange', io.controller.nsp.exchange);
+  io.of('/').route('chat', io.controller.chat.index);
+  io.route('chat', io.controller.chat.index);
+  io.route('book', io.controller.book.index);
+  io.route('receive', io.controller.receive.index);
+  io.route('bill', io.controller.bill.index);
+
+
   // 用户
   router.post('/api/user/register', controller.user.register)
   router.post('/api/user/login', controller.user.login)
@@ -34,8 +42,8 @@ module.exports = app => {
   router.post('/api/book/update', _jwt, controller.book.update); // Book更新
   // Category
   router.post('/api/category/add', _jwt, controller.category.AddCategory); // 添加Category
-  router.post('/api/category/delete', _jwt, controller.category.delete); // 删除Category
-  router.post('/api/category/update', _jwt, controller.category.update); // 修改Category
+  router.post('/api/category/delete', _jwt, controller.category.delete); // 添加Category
+  router.post('/api/category/update', _jwt, controller.category.update); // 添加Category
   // Budget 
   router.post('/api/budget/add', _jwt, controller.budget.setBudget); // 添加Budget
   router.get('/api/budget/getUserBudget', _jwt, controller.budget.getUserBudget); // 添加Budget
@@ -56,17 +64,7 @@ module.exports = app => {
   router.post('/api/account/delete', _jwt, controller.account.delete); // 添加账户
   router.post('/api/account/update', _jwt, controller.account.update); // 修改账户
   router.get('/api/account/getAllAccount', _jwt, controller.account.getAllAccount); // 获取所有账户信息
-  // Chart  
-  // router.get('/api/chart/getYear_LinePieTop', _jwt, controller.chart.getYear_LinePieTop); // 获取所有账户信息
-  // router.get('/api/chart/getDay_LinePieTop', _jwt, controller.chart.getDay_LinePieTop); // 获取所有账户信息
-  // router.get('/api/chart/getMonth_LinePieTop', _jwt, controller.chart.getMonth_LinePieTop); // 获取所有账户信息
-  // router.get('/api/chart/getWeek_LinePieTop', _jwt, controller.chart.getWeek_LinePieTop); // 获取所有账户信息
-  // router.get('/api/chart/get_Exp_data', _jwt, controller.chart.get_Exp_data); // 获取所有账户信息
+  // Chart  getYear_LinePieTop
   router.get('/api/chart/get_Exp_Inc_Trf', _jwt, controller.chart.get_Exp_Inc_Trf); // 获取所有账户信息
 
 };
-// POST请求 考虑到：数据安全及大小
-// 表面上的区别，内在本质是一样的，基于TCP协议，从理论上讲他们没差
-
-// POST请求 浏览器无法手动发起，只能通过浏览器地址栏发起GET请求
-// Postman

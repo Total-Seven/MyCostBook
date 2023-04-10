@@ -1,10 +1,6 @@
 # totalplan
 
-777666
-
 ## QuickStart
-
-<!-- add docs here for user -->
 
 see [egg docs][egg] for more detail.
 

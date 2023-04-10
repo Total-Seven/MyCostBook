@@ -7,6 +7,9 @@
 // 4.删除账单
 // 5.账单详情
 'use strict'
+
+const dayjs = require('dayjs')
+
 const moment = require('moment')
 const jwtErr = require('../middleware/jwtErr')
 
@@ -42,7 +45,7 @@ class BookController extends Controller {
                     name,
                     book_type,
                     user_id: id,
-                    date: this.app.mysql.literals.now,
+                    date: dayjs().format('YYYY-MM-DDTHH:mm:ss'),
                 })
                 ctx.body = {
                     code: 200,
@@ -51,11 +54,10 @@ class BookController extends Controller {
                 }
             }
         } catch (error) {
-            console.error(error)
             ctx.body = {
                 code: 500,
                 msg: '添加账本-蛋疼',
-                data: null
+                data: error
             }
         }
     }
@@ -115,19 +117,34 @@ class BookController extends Controller {
         }
 
         try {
-            const QUERY_STR = 'date'
+            // 查询
+            const QUERY_STR = 'date,multiuser'
             let sql = `select ${QUERY_STR} from book where id=${id}`
-            const date = await app.mysql.query(sql);
+            const [book] = await app.mysql.query(sql);
+            // Token
             let user_id
             const token = ctx.request.header.authorization;
             const decode = await app.jwt.verify(token, app.config.jwt.secret);
             if (!decode) return
             user_id = decode.id
+            // 删除
             const result = await ctx.service.book.delete(id, user_id);
+            if (result && book.multiuser == 1) {
+                // 多人账本信息也删除
+                const resultMulti = await app.mysql.delete('multiuserbook', { book_id: id })
+                if (resultMulti) {
+                    ctx.body = {
+                        code: 200,
+                        msg: '删除MultiuserBook成功',
+                        data: book.date,
+                    }
+                    return
+                }
+            }
             ctx.body = {
                 code: 200,
                 msg: '删除Book成功',
-                data: date,
+                data: book.date,
             }
         } catch (error) {
             ctx.body = {
